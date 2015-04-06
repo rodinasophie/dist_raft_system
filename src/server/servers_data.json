@@ -1,0 +1,5 @@
+[
+	{"id": 0, "ip-addr": "localhost", "port_serv": "1234", "port_client": "11112"},
+	{"id": 1, "ip-addr": "localhost", "port_serv": "11113", "port_client": "11114"},
+	{"id": 2, "ip-addr": "localhost", "port_serv": "11115", "port_client": "11116"}
+]

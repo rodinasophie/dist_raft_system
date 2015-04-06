@@ -1,0 +1,58 @@
+# Building script for a distributed system based on Raft algorithm
+# Server's side
+
+LOCAL_PATH = "../../"
+
+LOCAL_SOURCE_PATH   = LOCAL_PATH + "src"
+LOCAL_INCLUDES_PATH = LOCAL_PATH + "include"
+LOCAL_LIB_PATH      = LOCAL_PATH + "lib"
+
+SERVER_PATH = LOCAL_SOURCE_PATH + '/' + "server"
+SERVER_INCLUDES = LOCAL_INCLUDES_PATH + '/' + "server"
+
+SOCKET_INCLUDES = LOCAL_INCLUDES_PATH + '/' + "socket"
+
+def addprefix(prefix, items):
+	result = []
+	for item in items:
+		result += [prefix + item]
+	return result
+
+SYSTEM_SRC = Split("""
+	RaftServer.cpp
+	server_main.cpp
+	""")
+
+SOCKET_PATH = LOCAL_SOURCE_PATH + '/' + "socket"
+SOCKET_SRC = Split("""
+	UnixSocket.cpp
+	""")
+
+JSON_PATH = "json/src"
+TIMER_PATH = "timer"
+
+SOURCE_FILES = ( \
+	(addprefix(SERVER_PATH + '/', SYSTEM_SRC)) + \
+	(addprefix(SOCKET_PATH + '/', SOCKET_SRC)) \
+	)
+
+LOCAL_INCLUDES = ( \
+	[SERVER_INCLUDES] + \
+	[SOCKET_INCLUDES] + \
+	[LOCAL_INCLUDES_PATH] + \
+	[SERVER_INCLUDES + TIMER_PATH] + \
+	[LOCAL_PATH] + \
+	[LOCAL_LIB_PATH] + \
+	[LOCAL_LIB_PATH + '/' + JSON_PATH] \
+	)
+
+LOCAL_FLAGS = '-g -O3 -std=c++11 -Wnon-virtual-dtor -pthread'
+CCFLAGS = '-Wall -Winvalid-pch -Werror '
+LOCAL_LINKFLAGS = ["-rdynamic", "-pthread"]
+
+env = Environment(CPPFLAGS = LOCAL_FLAGS,
+									CPPPATH = LOCAL_INCLUDES,
+									CCFLAGS=CCFLAGS,
+									LINKFLAGS = LOCAL_LINKFLAGS)
+VariantDir("../../out/", '.', duplicate = 0)
+env.Program(target = "../../out/server", source = SOURCE_FILES)
