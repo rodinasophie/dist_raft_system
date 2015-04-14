@@ -38,9 +38,9 @@ class RaftServer : public ConsensusServer {
 	size_t elect_timeout_,
 				 last_committed_,
 				 last_applied_, // FIXME: Do we really need it?
-				 leader_id_,
 				 id_, voted_for_;
 
+	int leader_id_;
 	bool i_voted_;
 	vector<size_t> next_idx_;
 	vector<size_t> match_idx_;
@@ -50,7 +50,7 @@ class RaftServer : public ConsensusServer {
 	Timer *timer_;
 	IStateMachine *sm_;
 
-	bool ReceiveRPC(RPC *rpc);
+	bool ReceiveRPC(RPC* &rpc);
 	void SendRPC(RPC &rpc);
 	void SendResponse(std::string &resp);
 };
@@ -92,11 +92,11 @@ class AppendEntryRPC : public RPC {
 
 	AppendEntryRPC(string mes) {
 		// A,id,term,log_entry
-		mes.find(",");
 		size_t pos = mes.find(",");
+		pos = mes.find(",", pos + 1);
 		id_ = stoi(mes.substr(2, pos - 2));
 		size_t first = pos + 1;
-		pos = mes.find(",");
+		pos = mes.find(",", pos + 1);
 		cur_term_ = stoi(mes.substr(first, pos - first));
 		log_record_ = mes.substr(pos + 1);
 	}
@@ -120,8 +120,9 @@ class RequestVoteRPC : public RPC {
 	RequestVoteRPC(size_t id, int cur_term) : RPC(id, cur_term) {}
 	RequestVoteRPC(string mes) {
 		// R,id,term
-		mes.find(",");
+		std::cout << mes<<"\n";
 		size_t pos = mes.find(",");
+		pos = mes.find(",", pos + 1);
 		id_ = stoi(mes.substr(2, pos - 2));
 		cur_term_ = stoi(mes.substr(pos + 1));
 	}

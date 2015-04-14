@@ -1,29 +1,27 @@
 #ifndef __TIMER_HPP_
 #define __TIMER_HPP_
 
-#include <future>
-
+#include <chrono>
+#include <iostream>
+using namespace std::chrono;
 class Timer {
  public:
-	Timer(int timeout) : timeout_(timeout) {}
+	Timer(milliseconds timeout) : timeout_(timeout) {}
 	~Timer() {}
 
 	void Run() {
-		future_ = std::async(std::launch::async, Sleep, timeout_);
+		start_ = high_resolution_clock::now();
 	}
 
 	bool TimedOut() {
-		auto ticks = future_.wait_for(std::chrono::milliseconds(0));
-		return (ticks == std::future_status::ready);
+		if (duration_cast<milliseconds>(high_resolution_clock::now() - start_) > timeout_)
+			return true;
+		return false;
 	}
 
  private:
-	static void Sleep(int timeout) {
-		std::this_thread::sleep_for(std::chrono::milliseconds(timeout));
-	}
-
-	std::future<void> future_;
-	int timeout_;
+	milliseconds timeout_;
+	high_resolution_clock::time_point start_;
 };
 
 #endif // __TIMER_HPP_

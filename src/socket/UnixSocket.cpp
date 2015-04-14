@@ -177,11 +177,11 @@ size_t UnixSocket::Recv(string &data) {
 			return 0;
 		}
 	int sfd = (state_ == CLIENT) ? sfd_ : client_sfd_;
-	char buffer[1000];
+	char buffer;
   ssize_t ret;
-	while ((ret = recv(sfd, buffer, sizeof(buffer), MSG_DONTWAIT)) >= 0) {
-		data.append(buffer, ret);
-		if (buffer[ret - 1] == '\0')
+	while ((ret = recv(sfd, &buffer, 1, MSG_DONTWAIT)) >= 0) {
+		data += buffer;
+		if (buffer == '\0')
 			break;
 	}
   if (ret == -1) {

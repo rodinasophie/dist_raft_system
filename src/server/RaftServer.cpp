@@ -2,7 +2,6 @@
 #include "state_machine/MyStateMachine.hpp"
 #include "log/MyLogEntry.hpp"
 #include "socket/UnixSocket.hpp"
-#include <errno.h>
 
 RaftServer::RaftServer(size_t id, vector<server_t *> &servers) : cur_term_(0),
 		state_(FOLLOWER), servers_(servers), sfd_serv_for_serv_(NULL),
@@ -14,7 +13,9 @@ RaftServer::RaftServer(size_t id, vector<server_t *> &servers) : cur_term_(0),
 	sock_ = NULL;
 	srand(time(NULL));
 	elect_timeout_ = 150 + rand() % 150; // 150 - 300 ms
-	timer_ = new Timer(elect_timeout_);
+	rpc_ = NULL;
+	log_ = NULL;
+	timer_ = new Timer(std::chrono::milliseconds(elect_timeout_));
 	sm_ = new MyStateMachine();
 }
 
@@ -86,19 +87,19 @@ void RaftServer::Run() {
 	// XXX: Here connection already should be established between all servers
 
 	string message;
-	//size_t voted_for_ = 0;
 
 	// Finding the leader
 	timer_->Run();
 	while (1) {
-		//std::cout << leader_id_ << std::endl;
-		/*if (ReceiveRPC(rpc_)) {
-			if (rpc_)
+		if (ReceiveRPC(rpc_)) {
+			if (rpc_) {
 				rpc_->Act(this);
+			}
 			timer_->Run();
 		} else {
 			// Initiate new election
-			if (timer_->TimedOut()) {
+			if ((timer_->TimedOut()) && (state_ == FOLLOWER)) {
+				voted_for_ = 0;
 				cur_term_++;
 				state_ = CANDIDATE;
 				++voted_for_;
@@ -107,18 +108,25 @@ void RaftServer::Run() {
 				timer_->Run();
 			}
 
-			if (WE_CAN_APPLY_TO_SM) {
+			sfd_serv_for_client_->AcceptIncomings();
+
+			string mes;
+			if (!sfd_serv_for_client_->Recv(mes)) {
+				mes = "";
+			}
+			if (state_ == LEADER) {
+				AppendEntryRPC rpc(id_, cur_term_, mes);
+				SendRPC(rpc);
+			}
+			/*if (WE_CAN_APPLY_TO_SM) {
 				sm_->Apply();
 			}*/
-			string mes;
+			//std::cout << leader_id_ << std::endl;
+
+			//std::stringstream ss;
+			//ss << leader_id_;
+			//sfd_serv_for_client_->Send(ss.str());
 			// Client's requests
-			sfd_serv_for_client_->AcceptIncomings();
-			if (!sfd_serv_for_client_->Recv(mes)) {
-				continue;
-			}
-			std::stringstream ss;
-			ss << leader_id_;
-			sfd_serv_for_client_->Send(ss.str());
 			/*ILogEntry *log_entry = new MyLogEntry();
 				log_entry->SetData(mes);
 				log_entry->SetIndex(0); // TODO: indices are not set yet
@@ -131,32 +139,33 @@ void RaftServer::Run() {
 		//}
 		}
 		//sfd_serv_for_serv_->AcceptIncomings();
+	}
 }
 
 void RaftServer::SendResponse(std::string &resp) {
-	if (sock_)
+	if (sock_) {
 		sock_->Send(resp);
+	}
 	sock_ = NULL;
 }
 
 void RaftServer::ActWhenRequestVote() {
 	int another_term = rpc_->GetTransmitterTerm();
+	string resp;
 	if ((another_term > cur_term_) ||
 			((another_term == cur_term_) && (!i_voted_))) {
 		cur_term_ = another_term;
-		string resp;
 		std::stringstream ss;
 		ss << cur_term_;
 		resp = "+," + ss.str();
-		SendResponse(resp);
 		i_voted_ = true;
 	} else {
 		string resp;
 		std::stringstream ss;
 		ss << cur_term_;
 		resp = "-," + ss.str();
-		SendResponse(resp);
 	}
+	SendResponse(resp);
 }
 
 void RaftServer::ActWhenAppendEntry() {
@@ -165,15 +174,18 @@ void RaftServer::ActWhenAppendEntry() {
 		return;
 	string message;
 	AppendEntryRPC *rpc = (AppendEntryRPC *)rpc_;
-	// Another server wants to establish authority
+	// Another server wants to establish/maintain authority
 	if ((message = rpc->GetLogData()) == "") {
 		leader_id_ = rpc->GetTransmitterId();
+		//std::cout << "New leader is " << leader_id_<<"\n";
 		cur_term_ = another_term;
 		state_ = FOLLOWER;
 	} else {
-		ILogEntry *log_entry = new MyLogEntry();
-		log_entry->SetData(message);
-		log_->Add(log_entry);
+		string s = "oK";
+		SendResponse(s);
+		//ILogEntry *log_entry = new MyLogEntry();
+		//log_entry->SetData(message);
+		//log_->Add(log_entry);
 		// TODO: understand when log entry is committed and apply to state machine
 		// sm_->Apply();
 	}
@@ -188,7 +200,7 @@ void RaftServer::SendRPC(RPC &rpc) {
 	}
 }
 
-bool RaftServer::ReceiveRPC(RPC *rpc) {
+bool RaftServer::ReceiveRPC(RPC* &rpc) {
 	size_t cluster_size = servers_.size();
 	string message;
 	rpc = NULL;
