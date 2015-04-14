@@ -8,7 +8,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <thread>
-
+#include <fcntl.h>
+#include <iostream>
+#include <algorithm>
 
 #include "../../include/socket/UnixSocket.hpp"
 
@@ -83,14 +85,16 @@ bool UnixSocket::Bind(int server_port) {
 bool UnixSocket::AcceptIncomings() {
 	if (state_ != SERVER)
 		return false;
+	fcntl(sfd_, F_SETFL, O_NONBLOCK);
 	int client_sfd = -1;
 	struct sockaddr_in client_addr;
 	memset(&client_addr, 0, sizeof(client_addr));
 	socklen_t client_addr_size = sizeof(client_addr);
-	client_sfd = accept4(sfd_, (struct sockaddr *)&client_addr, &client_addr_size, SOCK_NONBLOCK);
+	client_sfd = accept(sfd_, (struct sockaddr *)&client_addr, &client_addr_size);
 	if (client_sfd == -1) {
 		return false;
 	}
+	clients_.push_back(client_sfd);
 	return true;
 }
 
@@ -105,6 +109,7 @@ size_t UnixSocket::Send(string data) {
 
   ssize_t ret;
 	int sfd = (state_ == CLIENT) ? sfd_ : client_sfd_;
+
 	if (sfd < 0) /* No client to send to */
 		return 0;
 	while ((remaining_bytes > 0) &&
@@ -137,23 +142,20 @@ bool UnixSocket::GetReadyClient() {
 
 	struct timeval timeout;
   fd_set fds;
-  while (1) {
-		FD_ZERO(&fds);
-		int max_fd = 0;
-		for (size_t i = 0; i < clients_.size(); ++i) {
-			FD_SET(clients_[i], &fds);
-      max_fd = MAX(max_fd, clients_[i]);
-    }
-    timeout.tv_sec = 5;
-    timeout.tv_usec = 0;
-    int res = select(max_fd + 1, &fds, NULL, NULL, &timeout);
-    if (res > 0) {
-      break;
-    }
-    if (res <= 0) {
-      return false;
-    }
+  FD_ZERO(&fds);
+	int max_fd = 0;
+	for (size_t i = 0; i < clients_.size(); ++i) {
+		FD_SET(clients_[i], &fds);
+		max_fd = MAX(max_fd, clients_[i]);
   }
+  timeout.tv_sec = 3;
+  timeout.tv_usec = 0;
+
+	int res = select(max_fd + 1, &fds, NULL, NULL, &timeout);
+	if (res <= 0) {
+    return false;
+  }
+
   for (size_t i = 0; i < clients_.size(); ++i) {
 		if (FD_ISSET(clients_[i], &fds)) {
 			ready_fds_.push_back(clients_[i]);
@@ -161,6 +163,7 @@ bool UnixSocket::GetReadyClient() {
 		}
 	}
 	client_sfd_ = ready_fds_.front();
+
 	ready_fds_.pop_front();
 	return true;
 }
@@ -176,17 +179,19 @@ size_t UnixSocket::Recv(string &data) {
 	int sfd = (state_ == CLIENT) ? sfd_ : client_sfd_;
 	char buffer[1000];
   ssize_t ret;
-
 	while ((ret = recv(sfd, buffer, sizeof(buffer), MSG_DONTWAIT)) >= 0) {
-    data.append(buffer, ret);
-    if (buffer[ret - 1] == '\0')
-      break;
-
-    if (data.find("\r\n\r\n") != data.npos)
-      break;
-  }
+		data.append(buffer, ret);
+		if (buffer[ret - 1] == '\0')
+			break;
+	}
   if (ret == -1) {
 		return 0;
   }
+	// if shutdown signal is sent
+	if (!strlen(data.c_str())) {
+		clients_.erase(std::remove(clients_.begin(), clients_.end(), client_sfd_), clients_.end());
+		return 0;
+	}
+	data.resize(data.length() - 1); // cutting \0 symbol
 	return data.length();
 }

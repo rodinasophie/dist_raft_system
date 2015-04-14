@@ -2,12 +2,13 @@
 #include "state_machine/MyStateMachine.hpp"
 #include "log/MyLogEntry.hpp"
 #include "socket/UnixSocket.hpp"
-
+#include <errno.h>
 
 RaftServer::RaftServer(size_t id, vector<server_t *> &servers) : cur_term_(0),
 		state_(FOLLOWER), servers_(servers), sfd_serv_for_serv_(NULL),
 		sfd_serv_for_client_(new UnixSocket()), last_committed_(0),
-		last_applied_(0), leader_id_(-1), id_(id) {
+		last_applied_(0), id_(id) {
+	leader_id_ = -1;
 	voted_for_ = 0;
 	i_voted_ = false;
 	sock_ = NULL;
@@ -80,15 +81,18 @@ void RaftServer::Run() {
 			}
 		}
 	}
+
+	// std::cout << "server #" << id_ << "has established connection" << std::endl;
 	// XXX: Here connection already should be established between all servers
 
 	string message;
-	size_t voted_for_ = 0;
+	//size_t voted_for_ = 0;
 
 	// Finding the leader
 	timer_->Run();
 	while (1) {
-		if (ReceiveRPC(rpc_)) {
+		//std::cout << leader_id_ << std::endl;
+		/*if (ReceiveRPC(rpc_)) {
 			if (rpc_)
 				rpc_->Act(this);
 			timer_->Run();
@@ -103,33 +107,30 @@ void RaftServer::Run() {
 				timer_->Run();
 			}
 
-			/*if (WE_CAN_APPLY_TO_SM) {
+			if (WE_CAN_APPLY_TO_SM) {
 				sm_->Apply();
 			}*/
 			string mes;
 			// Client's requests
-			if (sfd_serv_for_client_->AcceptIncomings()) {
-				sfd_serv_for_client_->Recv(mes);
-				if (mes == "leader") {
-					std::stringstream ss;
-					ss << leader_id_;
-					sfd_serv_for_client_->Send(ss.str());
-					continue;
-				}
-
-				ILogEntry *log_entry = new MyLogEntry();
+			sfd_serv_for_client_->AcceptIncomings();
+			if (!sfd_serv_for_client_->Recv(mes)) {
+				continue;
+			}
+			std::stringstream ss;
+			ss << leader_id_;
+			sfd_serv_for_client_->Send(ss.str());
+			/*ILogEntry *log_entry = new MyLogEntry();
 				log_entry->SetData(mes);
 				log_entry->SetIndex(0); // TODO: indices are not set yet
 				log_entry->SetTerm(cur_term_);
 				log_->Add(log_entry);
-				if (leader_id_ == id_) {
+				if (leader_id_ == (int)id_) {
 					AppendEntryRPC rpc(id_, cur_term_, mes);
 					SendRPC(rpc);
-				}
-			}
+			}*/
+		//}
 		}
-		sfd_serv_for_serv_->AcceptIncomings();
-	}
+		//sfd_serv_for_serv_->AcceptIncomings();
 }
 
 void RaftServer::SendResponse(std::string &resp) {
