@@ -9,6 +9,8 @@
 #include "state_machine/IStateMachine.hpp"
 
 class RPC;
+class RequestVoteRPC;
+class AppendEntryRPC;
 
 class RaftServer : public ConsensusServer {
  public:
@@ -42,15 +44,18 @@ class RaftServer : public ConsensusServer {
 
 	int leader_id_;
 	bool i_voted_;
+	high_resolution_clock::time_point start;
 	vector<size_t> next_idx_;
 	vector<size_t> match_idx_;
 
 	RPC *rpc_;
+	RequestVoteRPC *rq_rpc_;
+	AppendEntryRPC *ae_rpc_;
 	Log *log_;
 	Timer *timer_;
 	IStateMachine *sm_;
 
-	bool ReceiveRPC(RPC* &rpc);
+	bool ReceiveRPC();
 	void SendRPC(RPC &rpc);
 	void SendResponse(std::string &resp);
 };
@@ -61,14 +66,16 @@ class RaftServer : public ConsensusServer {
 
 class RPC {
  public:
-	RPC(size_t id, int cur_term) : id_(id), cur_term_(cur_term) {
+	RPC() {}
+	virtual ~RPC() {}
+	virtual void SetData(size_t id, int cur_term) {
+		id_ = id;
+		cur_term_ = cur_term;
 		std::stringstream ss_id, ss_cur_term;
 		ss_id << id_;
 		ss_cur_term << cur_term_;
 		data_ = ss_id.str() + "," + ss_cur_term.str();
 	};
-	RPC() {}
-	virtual ~RPC() {}
 	int GetTransmitterId() {
 		return id_;
 	}
@@ -86,11 +93,14 @@ class RPC {
 
 class AppendEntryRPC : public RPC {
  public:
-	AppendEntryRPC(size_t id, int cur_term, string &log_record) : RPC(id, cur_term) {
+	AppendEntryRPC() {}
+	void SetData(size_t id, int cur_term, string &log_record) {
+		RPC::SetData(id, cur_term);
 		log_record_ = log_record;
 	}
+	~AppendEntryRPC() {}
 
-	AppendEntryRPC(string mes) {
+	void SetData(string mes) {
 		// A,id,term,log_entry
 		size_t pos = mes.find(",");
 		pos = mes.find(",", pos + 1);
@@ -101,7 +111,6 @@ class AppendEntryRPC : public RPC {
 		log_record_ = mes.substr(pos + 1);
 	}
 
-	~AppendEntryRPC() {}
 	string ToSend() {
 		return "A," + data_ + "," + log_record_;
 	}
@@ -117,16 +126,18 @@ class AppendEntryRPC : public RPC {
 
 class RequestVoteRPC : public RPC {
  public:
-	RequestVoteRPC(size_t id, int cur_term) : RPC(id, cur_term) {}
-	RequestVoteRPC(string mes) {
+	RequestVoteRPC() {}
+	~RequestVoteRPC() {}
+	void SetData(size_t id, int cur_term) {
+		RPC::SetData(id, cur_term);
+	}
+	void SetData(string mes) {
 		// R,id,term
-		std::cout << mes<<"\n";
 		size_t pos = mes.find(",");
 		pos = mes.find(",", pos + 1);
 		id_ = stoi(mes.substr(2, pos - 2));
 		cur_term_ = stoi(mes.substr(pos + 1));
 	}
-	~RequestVoteRPC() {}
 	void Act(RaftServer *raftserver) {
 		raftserver->ActWhenRequestVote();
 	}
