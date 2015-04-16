@@ -12,7 +12,6 @@ class ILogEntry {
 	virtual ~ILogEntry() {};
 
 	virtual string &ToSend() = 0;
-	virtual void SetData(string &str) = 0;
 
 	virtual IKey *GetKey() = 0;
 	virtual IValue *GetValue() = 0;
@@ -34,7 +33,7 @@ class ILogEntry {
 		return term_;
 	}
 
- private:
+ protected:
 	size_t term_, idx_;
 };
 

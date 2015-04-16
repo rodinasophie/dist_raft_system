@@ -18,28 +18,28 @@ class MyLogEntry : public ILogEntry {
 		value_ = new StringValue(value);
 	};
 
-	MyLogEntry() {};
-	~MyLogEntry() {};
-
-	void SetData(string &str) {
+	MyLogEntry(string &str) {
+		Action action = ADD;
 		switch (str[0]) {
 			case 'a':
-				action_->SetAction(ADD);
+				action = ADD;
 				break;
 			case 'd':
-				action_->SetAction(DELETE);
+				action = DELETE;
 				break;
 			case 's':
-				action_->SetAction(SET);
+				action = SET;
 				break;
 			case 'g':
-				action_->SetAction(GET);
+				action = GET;
 				break;
 		}
+		action_ = new KeyValAction(action, this);
 		size_t pos = str.find(",", 4);
-		key_->Set(str.substr(4, pos - 4));
-		value_->Set(str.substr(pos + 1, str.length() - pos + 1));
+		key_ = new StringKey(str.substr(4, pos - 4));
+		value_ = new StringValue(str.substr(pos + 1, str.length() - pos - 1));
 	}
+	~MyLogEntry() {};
 
 	// this method creates a string for sending
 	string &ToSend() {

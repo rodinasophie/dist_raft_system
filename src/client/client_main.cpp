@@ -26,12 +26,13 @@ int main(int argc, char *argv[]) {
 
 	ConsensusClient *client = new RaftClient(servers_arr);
 	client->Connect();
-/*
+	std::cout << "Connected\n";
 	ILogEntry *log_entry = new MyLogEntry(ADD, "x", "5");
 	client->SendRequest(log_entry);
+	std::cout << "Sending log entry: "<< log_entry->ToSend()<<"\n";
 	MyResponse resp;
-	client->GetResponse(&resp);
-	string str = resp->GetData();
-	cout << str << endl;
-	delete log_entry;*/
+	while (!client->GetResponse(&resp)) {}
+	string str = resp.GetData();
+	cout << "Response: "<<str << endl;
+	delete log_entry;
 }

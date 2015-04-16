@@ -13,8 +13,11 @@ RaftServer::RaftServer(size_t id, vector<server_t *> &servers) : cur_term_(0),
 	sock_ = NULL;
 	srand(time(NULL));
 	elect_timeout_ = 150 + rand() % 150; // 150 - 300 ms
+	std::cout << "My timeout is "<<elect_timeout_<<"\n";
 	rpc_ = NULL;
-	log_ = NULL;
+	rq_rpc_ = new RequestVoteRPC();
+	ae_rpc_ = new AppendEntryRPC();
+	log_ = new Log();
 	timer_ = new Timer(std::chrono::milliseconds(elect_timeout_));
 	sm_ = new MyStateMachine();
 }
@@ -83,15 +86,14 @@ void RaftServer::Run() {
 		}
 	}
 
-	// std::cout << "server #" << id_ << "has established connection" << std::endl;
+	std::cout << "server #" << id_ << "has established connection" << std::endl;
 	// XXX: Here connection already should be established between all servers
 
 	string message;
-
 	// Finding the leader
 	timer_->Run();
 	while (1) {
-		if (ReceiveRPC(rpc_)) {
+		if (ReceiveRPC()) {
 			if (rpc_) {
 				rpc_->Act(this);
 			}
@@ -103,40 +105,47 @@ void RaftServer::Run() {
 				cur_term_++;
 				state_ = CANDIDATE;
 				++voted_for_;
-				RequestVoteRPC rpc(id_, cur_term_);
-				SendRPC(rpc);
+				rq_rpc_->SetData(id_, cur_term_);
+				SendRPC(*rq_rpc_);
 				timer_->Run();
+				start = high_resolution_clock::now();
 			}
 
+			string mes = "";
 			sfd_serv_for_client_->AcceptIncomings();
+			sfd_serv_for_client_->Recv(mes);
 
-			string mes;
-			if (!sfd_serv_for_client_->Recv(mes)) {
-				mes = "";
+			if (mes == "leader") {
+				std::stringstream ss;
+				ss << leader_id_;
+				sfd_serv_for_client_->Send(ss.str());
+				continue;
 			}
+
 			if (state_ == LEADER) {
-				AppendEntryRPC rpc(id_, cur_term_, mes);
-				SendRPC(rpc);
-			}
-			/*if (WE_CAN_APPLY_TO_SM) {
-				sm_->Apply();
-			}*/
-			//std::cout << leader_id_ << std::endl;
-
-			//std::stringstream ss;
-			//ss << leader_id_;
-			//sfd_serv_for_client_->Send(ss.str());
-			// Client's requests
-			/*ILogEntry *log_entry = new MyLogEntry();
-				log_entry->SetData(mes);
+				ae_rpc_->SetData(id_, cur_term_, mes);
+				SendRPC(*ae_rpc_);
+				if (mes == "") {
+					continue;
+				}
+				std::cout << mes;
+				ILogEntry *log_entry = new MyLogEntry(mes);
 				log_entry->SetIndex(0); // TODO: indices are not set yet
 				log_entry->SetTerm(cur_term_);
 				log_->Add(log_entry);
-				if (leader_id_ == (int)id_) {
-					AppendEntryRPC rpc(id_, cur_term_, mes);
-					SendRPC(rpc);
+				mes = "OK!";
+				sfd_serv_for_client_->Send(mes);
+				ILogEntry *log_en = log_->Get();
+			}
+				//std::cout << "Beginning\n";
+				//std::cout << "\nHere\n";
+				//std::cout<< "Term and index set\n";
+				//std::cout << "Added!\n";
+				//std::cout << "Log entry was added."<<"Getting it: \n";
+
+			/*if (WE_CAN_APPLY_TO_SM) {
+				sm_->Apply();
 			}*/
-		//}
 		}
 		//sfd_serv_for_serv_->AcceptIncomings();
 	}
@@ -177,6 +186,7 @@ void RaftServer::ActWhenAppendEntry() {
 	// Another server wants to establish/maintain authority
 	if ((message = rpc->GetLogData()) == "") {
 		leader_id_ = rpc->GetTransmitterId();
+		//std::cout << "AppendEntry recev from "<< leader_id_<< "\n";
 		//std::cout << "New leader is " << leader_id_<<"\n";
 		cur_term_ = another_term;
 		state_ = FOLLOWER;
@@ -200,10 +210,9 @@ void RaftServer::SendRPC(RPC &rpc) {
 	}
 }
 
-bool RaftServer::ReceiveRPC(RPC* &rpc) {
+bool RaftServer::ReceiveRPC() {
 	size_t cluster_size = servers_.size();
 	string message;
-	rpc = NULL;
 	bool mes_got = false;
 	if (sfd_serv_for_serv_) {
 		if (sfd_serv_for_serv_->Recv(message)) {
@@ -220,14 +229,17 @@ bool RaftServer::ReceiveRPC(RPC* &rpc) {
 			}
 		}
 	}
+	rpc_ = NULL;
 	int term;
 	if (mes_got) {
 		switch (message[0]) {
 			case 'R':
-				rpc = new RequestVoteRPC(message);
+				rq_rpc_->SetData(message);
+				rpc_ = rq_rpc_;
 				break;
 			case 'A':
-				rpc = new AppendEntryRPC(message);
+				ae_rpc_->SetData(message);
+				rpc_ = ae_rpc_;
 				break;
 			case '+':
 				term = stoi(message.substr(2));
@@ -241,8 +253,9 @@ bool RaftServer::ReceiveRPC(RPC* &rpc) {
 						state_ = LEADER;
 						leader_id_ = id_;
 						string str("");
-						AppendEntryRPC rpc1(id_, cur_term_, str);
-						SendRPC(rpc1); // establishing authority
+						ae_rpc_->SetData(id_, cur_term_, str);
+						SendRPC(*ae_rpc_); // establishing authority
+						//std::cout << "I'm a leader! " <<id_ << "\n";
 					}
 				}
 				break;

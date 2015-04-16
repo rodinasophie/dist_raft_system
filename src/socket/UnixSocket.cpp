@@ -148,8 +148,8 @@ bool UnixSocket::GetReadyClient() {
 		FD_SET(clients_[i], &fds);
 		max_fd = MAX(max_fd, clients_[i]);
   }
-  timeout.tv_sec = 3;
-  timeout.tv_usec = 0;
+  timeout.tv_sec = 0;
+  timeout.tv_usec = 200000;
 
 	int res = select(max_fd + 1, &fds, NULL, NULL, &timeout);
 	if (res <= 0) {
@@ -190,6 +190,7 @@ size_t UnixSocket::Recv(string &data) {
 	// if shutdown signal is sent
 	if (!strlen(data.c_str())) {
 		clients_.erase(std::remove(clients_.begin(), clients_.end(), client_sfd_), clients_.end());
+		data = "";
 		return 0;
 	}
 	data.resize(data.length() - 1); // cutting \0 symbol

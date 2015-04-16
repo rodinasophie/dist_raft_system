@@ -18,6 +18,7 @@ class RaftClient : public ConsensusClient {
 	Socket *sock_;
 	bool sock_connected_;
 	vector<server_t *> servers_;
+	const int MAX_CONNECT_TRIES_ = 20;
 };
 
 #endif // __RAFT_CLIENT_HPP_
