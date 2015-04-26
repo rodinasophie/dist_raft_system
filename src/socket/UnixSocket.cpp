@@ -149,7 +149,7 @@ bool UnixSocket::GetReadyClient() {
 		max_fd = MAX(max_fd, clients_[i]);
   }
   timeout.tv_sec = 0;
-  timeout.tv_usec = 200000;
+  timeout.tv_usec = 20;
 
 	int res = select(max_fd + 1, &fds, NULL, NULL, &timeout);
 	if (res <= 0) {

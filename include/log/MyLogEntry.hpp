@@ -18,9 +18,12 @@ class MyLogEntry : public ILogEntry {
 		value_ = new StringValue(value);
 	};
 
-	MyLogEntry(string &str) {
+	MyLogEntry(string &log_entry, size_t term, size_t idx) {
+		this->SetIndex(idx);
+		this->SetTerm(term);
+		log_entry_ = log_entry;
 		Action action = ADD;
-		switch (str[0]) {
+		switch (log_entry[0]) {
 			case 'a':
 				action = ADD;
 				break;
@@ -35,11 +38,15 @@ class MyLogEntry : public ILogEntry {
 				break;
 		}
 		action_ = new KeyValAction(action, this);
-		size_t pos = str.find(",", 4);
-		key_ = new StringKey(str.substr(4, pos - 4));
-		value_ = new StringValue(str.substr(pos + 1, str.length() - pos - 1));
+		size_t pos = log_entry.find(",", 4);
+		key_ = new StringKey(log_entry.substr(4, pos - 4));
+		value_ = new StringValue(log_entry.substr(pos + 1, log_entry.length() - pos - 1));
 	}
 	~MyLogEntry() {};
+
+	string &GetLogData() {
+		return log_entry_;
+	}
 
 	// this method creates a string for sending
 	string &ToSend() {
@@ -140,6 +147,7 @@ class MyLogEntry : public ILogEntry {
 	StringKey *key_;
 	StringValue *value_;
 	KeyValAction *action_;
+	string log_entry_;
 };
 
 #endif // __MY_LOG_ENTRY_HPP_

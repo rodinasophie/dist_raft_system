@@ -12,7 +12,7 @@
 
 using std::string;
 using std::vector;
-
+using namespace std;
 #include "jsoncons/json.hpp"
 
 using jsoncons::json;
