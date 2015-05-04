@@ -2,15 +2,18 @@
 #define __LOG_HPP_
 
 #include "ILogEntry.hpp"
-
+#include <iostream>
 #include <vector>
 using std::vector;
 
 class Log {
  public:
-	Log() : searched_(0), is_consistent_(false) {};
+	Log() : searched_(0), is_consistent_(false) {
+		log_entries_.clear();
+	};
 	~Log() {};
 	void Add(ILogEntry *log_entry) {
+		std::cout<<"LOG:Added to log, size == "<<log_entries_.size()<<"\n";
 		log_entries_.push_back(log_entry);
 	}
 
@@ -44,6 +47,7 @@ class Log {
 	}
 
 	bool Search(size_t term, size_t idx) {
+		//std::cout<<"\nLOG: Searching idx = "<<idx<<" with term = "<< term<<"\n\n";
 		for (size_t i = 0; i < log_entries_.size(); ++i) {
 			if ((log_entries_[i]->GetTerm() == term) && (log_entries_[i]->GetIndex() == idx)) {
 				searched_ = i;
@@ -54,13 +58,14 @@ class Log {
 	}
 
 	ILogEntry *Search(size_t idx) {
-		if (idx < log_entries_.size())
+		std::cout<<"idx = "<<idx<<", size = "<<log_entries_.size()<<"\n";
+		if (idx <= log_entries_.size())
 			return log_entries_[idx - 1];
 		return NULL;
 	}
 
 	void Delete() {
-		log_entries_.resize(searched_ + 1);
+		//log_entries_.resize(searched_ + 1);
 	}
 
 	size_t GetLength() {
@@ -71,7 +76,7 @@ class Log {
 		return is_consistent_;
 	}
 
-	void SetConsistency(bool state) {
+	void SetConsistent(bool state) {
 		is_consistent_ = state;
 	}
  private:

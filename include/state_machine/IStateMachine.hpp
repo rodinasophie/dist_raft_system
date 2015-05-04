@@ -7,7 +7,7 @@ class IStateMachine {
  public:
 	IStateMachine() {};
 	virtual ~IStateMachine() {};
-	virtual void Apply(ILogEntry *log_entry) = 0;
+	virtual std::string Apply(ILogEntry *log_entry) = 0;
 };
 
 #endif // __ISTATE_MACHINE_HPP_

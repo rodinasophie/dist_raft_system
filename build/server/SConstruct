@@ -47,7 +47,7 @@ LOCAL_INCLUDES = ( \
 	)
 
 LOCAL_FLAGS = '-g -O3 -std=c++11 -Wnon-virtual-dtor -pthread'
-CCFLAGS = '-Wall -Winvalid-pch -Werror '
+CCFLAGS = '-Wall -Winvalid-pch -Werror'
 LOCAL_LINKFLAGS = ["-rdynamic", "-pthread"]
 
 env = Environment(CPPFLAGS = LOCAL_FLAGS,

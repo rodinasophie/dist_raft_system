@@ -29,6 +29,8 @@ bool RaftClient::Connect() {
 		while (1) {
 			if (!sock_->Send(leader)) {
 				return false;
+			} else {
+				std::cout<<"Sent asking leader\n";
 			}
 			while (!sock_->Recv(rsp)) {
 			}
@@ -38,9 +40,11 @@ bool RaftClient::Connect() {
 				if (count == MAX_CONNECT_TRIES_) { // leader is not chosen
 					return false;
 				}
+				std::cout<<"Sleeping\n";
 				std::this_thread::sleep_for(std::chrono::seconds(2));
 				continue;
 			}
+			std::cout<<"I got message "<< id<<"\n";
 			if (server->id == (size_t)id) {
 				sock_connected_ = true;
 				std::cout << "My leader is "<<id<<"\n";
@@ -89,7 +93,7 @@ bool RaftClient::SendRequest(ILogEntry *log_entry) {
 bool RaftClient::GetResponse(IResponse *resp) {
 	if (!sock_connected_)
 		return false;
-	string response;
+	string response = "";
 	if (!sock_->Recv(response))
 		return false;
 	resp->SetData(response);

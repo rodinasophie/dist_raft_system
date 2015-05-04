@@ -24,15 +24,16 @@ class IAction {
  public:
 	IAction() {};
 	virtual ~IAction() {};
-	virtual void Act(IStorage *storage) = 0;
+	virtual string Act(IStorage *storage) = 0;
 };
 
 class IStorage {
  public:
 	IStorage() {};
 	virtual ~IStorage() {};
-	virtual void Add(IKey *key, IValue * value) = 0;
-	virtual void Delete(IKey *key, IValue * value) = 0;
+	virtual string Add(IKey *key, IValue * value) = 0;
+	virtual string Delete(IKey *key) = 0;
+	virtual string Get(IKey *key) = 0;
 };
 
 

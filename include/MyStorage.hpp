@@ -2,19 +2,30 @@
 #define __MY_STORAGE_HPP_
 
 #include <map>
-
+#include <iostream>
 #include "include/Interfaces.hpp"
+
+// FIXME: Check errors!!!
 
 class MyStorage : public IStorage {
  public:
 	MyStorage() {};
 	~MyStorage() {};
-	void Add(IKey *key, IValue *value) {
+	string Add(IKey *key, IValue *value) {
 		storage_[key->ToString()] = value->ToString();
+		return "+";
 	}
 
-	void Delete(IKey *key, IValue *value) {
-		storage_.erase(key->ToString());
+	string Delete(IKey *key) {
+		if (storage_.erase(key->ToString())) {
+			return "+";
+		}
+		return "-";
+	}
+
+	string Get(IKey *key) {
+		std::cout<<"Get func is called, returning  "<<storage_[key->ToString()]<< "\n";
+		return storage_[key->ToString()];
 	}
 
  private:

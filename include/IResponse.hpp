@@ -8,7 +8,7 @@ class IResponse {
  public:
 	IResponse() {};
 	virtual ~IResponse() {};
-	virtual void SetData(string &str) = 0;
+	virtual void SetData(string str) = 0;
 };
 
 #endif // __IRESPONSE_HPP_

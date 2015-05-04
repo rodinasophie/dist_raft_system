@@ -45,7 +45,7 @@ class RaftServer : public ConsensusServer {
 				 log_indx_,
 				 elect_timeout_,
 				 receiver_;
-
+	std::string resp_;
 	bool i_voted_;
 	high_resolution_clock::time_point start;
 	vector<size_t> next_idx_;
@@ -134,11 +134,13 @@ class AppendEntryRPC : public RPC {
 		first = pos + 1;
 		pos = mes.find(",", pos + 1);
 		commit_idx_ = stoi(mes.substr(first, pos - first));
-		pos = mes.find(",", pos + 1);
 		log_record_ = mes.substr(pos + 1);
+		if (log_record_ != "")
+			std::cout << "Setting data in ApEntry log_record = "<<log_record_<<", all mes = "<<mes<<"\n";
 	}
 
 	string ToSend() {
+		// XXX: Shpuld not be called after SetData(mes) initialization(data_ not set)
 		return "A," + data_ + "," + log_record_;
 	}
 

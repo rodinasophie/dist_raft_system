@@ -14,7 +14,7 @@ RaftServer::RaftServer(size_t id, vector<server_t *> &servers) : cur_term_(0),
 	srand(time(NULL));
 	elect_timeout_ = 150 + rand() % 150; // 150 - 300 ms
 	std::cout << "My timeout is "<<elect_timeout_<<"\n";
-	receiver_ = 0;
+	resp_ = "";
 	rpc_ = NULL;
 	rq_rpc_ = new RequestVoteRPC();
 	ae_rpc_ = new AppendEntryRPC();
@@ -107,6 +107,7 @@ void RaftServer::Run() {
 		} else {
 			// Initiate new election
 			if ((timer_->TimedOut()) && (state_ != LEADER)) {
+				std::cout<<"I wanna be a leader\n";
 				voted_for_ = 0;
 				cur_term_++;
 				state_ = CANDIDATE;
@@ -118,25 +119,30 @@ void RaftServer::Run() {
 					term = le->GetTerm();
 				}
 				rq_rpc_->SetData(id_, cur_term_, idx, term);
+				std::cout<<"Before\n";
 				SendRPC(*rq_rpc_);
+				std::cout<<"After\n";
 				timer_->Run();
-				//start = high_resolution_clock::now();
 			}
 			string mes = "";
 			sfd_serv_for_client_->AcceptIncomings();
 			if (!log_entry_) {
 				sfd_serv_for_client_->Recv(mes);
 			}
+			if (mes != "")
+				std::cout << "We received from client "<<mes<<"\n";
 			if (mes == "leader") {
 				std::stringstream ss;
 				ss << leader_id_;
+				std::cout<<"Sending leader "<< leader_id_<<"\n";
 				sfd_serv_for_client_->Send(ss.str());
 				continue;
 			}
 
 			if (state_ == LEADER) {
 				if (mes != "") {
-					log_entry_ = new MyLogEntry(mes, log_indx_++, cur_term_);
+					std::cout<<"\nAdding log entry with idx = "<<log_indx_<<"\n\n";
+					log_entry_ = new MyLogEntry(mes, cur_term_, log_indx_++);
 					log_->Add(log_entry_);
 				}
 				size_t prev_term = 0,
@@ -146,25 +152,18 @@ void RaftServer::Run() {
 					prev_term = le->GetTerm();
 					prev_idx = le->GetIndex();
 				}
+				if ((log_entry_) && (commit_idx_ == log_entry_->GetIndex())) {
+					sfd_serv_for_client_->Send(resp_);
+					resp_ = "";
+					log_entry_ = NULL;
+				}
 				ae_rpc_->SetData(id_, cur_term_, prev_idx, prev_term, commit_idx_, mes);
 				SendRPC(*ae_rpc_);
 				if (mes == "") {
 					continue;
 				}
-				std::cout << mes;
-				mes = "OK!";
-				sfd_serv_for_client_->Send(mes);
 			}
-				//std::cout << "Beginning\n";
-				//std::cout << "\nHere\n";
-				//std::cout<< "Term and index set\n";
-				//std::cout << "Added!\n";
-				//std::cout << "Log entry was added."<<"Getting it: \n";
-
-			/*if (WE_CAN_APPLY_TO_SM) {
-			}*/
 		}
-		//sfd_serv_for_serv_->AcceptIncomings();
 	}
 }
 
@@ -196,7 +195,7 @@ void RaftServer::ActWhenRequestVote() {
 				((rq_rpc_->GetLastLogTerm() == term) &&
 				 (rq_rpc_->GetLastLogIdx() >= idx))) {
 			resp = "!R,+," + ss.str();
-			log_->SetConsistency(false);
+			log_->SetConsistent(false);
 			i_voted_ = true;
 		}
 	}
@@ -224,33 +223,59 @@ void RaftServer::ActWhenAppendEntry() {
 	ss << cur_term_;
 	if (commit_idx_ < rpc->GetLeaderCommitIdx()) {
 		commit_idx_ = std::min(rpc->GetLeaderCommitIdx(), log_->GetLast()->GetIndex());
+		std::cout << "Last_app = "<<last_applied_<<", commit_idx = "<<commit_idx_<<"\n";
 	}
 	while (last_applied_ < commit_idx_) {
 		++last_applied_;
-		sm_->Apply(log_->Search(last_applied_));
+		ILogEntry *le = NULL;
+		if ((le = log_->Search(last_applied_))) {
+			sm_->Apply(le);
+			std::cout << "Applying to sm\n";
+		} else {
+			--last_applied_;
+			break;
+		}
 	}
-
-	if ((message = rpc->GetLogData()) != "" ) {
-		if (log_->IsConsistent()) {
+	//if ((message = rpc->GetLogData()) != "" ) {
+		/*if ((log_->IsConsistent()) && (last_applied_ != commit_idx_)) {
 			// XXX:!!! PrevLogIndx - here is a new entry from replicas
 			ILogEntry *le = new MyLogEntry(rpc->GetLogData(), rpc->GetPrevLogTerm(),
 					rpc->GetPrevLogIdx());
+			std::cout << "Added to log\n";
 			log_->Add(le);
 			return;
+		}*/
+		// We are copying log entries but heartbeat is got
+		if ((last_applied_ != commit_idx_) && (rpc->GetLogData() == "")) {
+			return;
 		}
-		if ((!rpc->GetPrevLogIdx()) ||
+		if ((!rpc->GetPrevLogIdx()) || // FIXME: here is problem
 				(log_->Search(rpc->GetPrevLogTerm(), rpc->GetPrevLogIdx()))) {
 			// intial stage: no entries in leader's log
 			// or logs are consistent
 			log_->Delete(); // deletes the tail of incorrect entries
+			if (rpc->GetLogData() != "") {
+				std::cout<<"Before "<<rpc->GetLogData()<<"\n";
+				ILogEntry *le =
+					new MyLogEntry(rpc->GetLogData(), rpc->GetTransmitterTerm(),
+							rpc->GetPrevLogIdx() + 1);
+				std::cout<<"After getting\n";
+				log_->Add(le);
+				log_indx_ = rpc->GetPrevLogIdx() + 2;
+				std::cout << "Added to log2\n";
+			}
 			s += "+,";
-			log_->SetConsistency(true);
+			log_->SetConsistent(true);
 		} else {
 			s += "-,";
 		}
 		s += ss.str();
+		ss.str("");
+		ss << id_;
+		s += "," + ss.str();
 		SendResponse(s);
-	}
+	//}
+
 }
 
 void RaftServer::SendRPC(RPC &rpc) {
@@ -264,7 +289,7 @@ void RaftServer::SendRPC(RPC &rpc) {
 
 bool RaftServer::ReceiveRPC() {
 	size_t cluster_size = servers_.size();
-	string message;
+	string message = "";
 	bool mes_got = false;
 	if (sfd_serv_for_serv_) {
 		if (sfd_serv_for_serv_->Recv(message)) {
@@ -276,7 +301,6 @@ bool RaftServer::ReceiveRPC() {
 		for (size_t i = 0; i < servs_as_clients_.size(); ++i) {
 			if (servs_as_clients_[i]->Recv(message)) {
 				sock_ = servs_as_clients_[i];
-				receiver_ = i;
 				mes_got = true;
 				break;
 			}
@@ -284,6 +308,7 @@ bool RaftServer::ReceiveRPC() {
 	}
 	rpc_ = NULL;
 	size_t term;
+	size_t receiver;
 	if (mes_got) {
 		switch (message[0]) {
 			case 'R':
@@ -296,8 +321,13 @@ bool RaftServer::ReceiveRPC() {
 				break;
 			case '!': // this is response from follower
 				// !R,+,term
-				// !A,+,term
-				term = stoi(message.substr(5));
+				// !A,+,term,id
+				if (message[1] == 'R') {
+					term = stoi(message.substr(5));
+				} else {
+					size_t pos = message.find(",", 5);
+					term = stoi(message.substr(5, pos - 5));
+				}
 				if (term > cur_term_) {
 					state_ = FOLLOWER;
 					break;
@@ -314,7 +344,7 @@ bool RaftServer::ReceiveRPC() {
 							//size_t log_length = log_->GetLength();
 
 							for (size_t i = 0; i < next_idx_.size(); ++i) {
-								next_idx_[i] = log_indx_;// FIXME: what idx?
+								next_idx_[i] = log_indx_;
 								match_idx_[i] = 0;
 							}
 							string str("");
@@ -326,42 +356,60 @@ bool RaftServer::ReceiveRPC() {
 								prev_idx = le->GetIndex();
 							}
 							ae_rpc_->SetData(id_, cur_term_, prev_idx, prev_term, commit_idx_, str);
+							std::cout<<"Sending "<<ae_rpc_->ToSend()<<"\n";
 							SendRPC(*ae_rpc_); // establishing authority
 							std::cout << "I'm a leader! " <<id_ << "\n";
 						}
 					}
 				} else {
 				// AppendEntry Resp
+					//std::cout << "Receive resp: "<<message<<"\n";
 					if (message[3] == '+') {
 						if (!log_->GetLast()) {
 							return true;
 						}
-						while (next_idx_[receiver_] <= log_->GetLast()->GetIndex()) {
-							match_idx_[receiver_] = next_idx_[receiver_] - 1;
-							std::cout << "Here not null should be!\n";
-							MyLogEntry *le = (MyLogEntry*)log_->Search(next_idx_[receiver_]);
-							ae_rpc_->SetData(id_, cur_term_, le->GetIndex(), le->GetTerm(), commit_idx_,
-									le->GetLogData());
-							std::cout << "It seems really not NULL\n";
-							next_idx_[receiver_]++;
-							SendResponse(ae_rpc_->ToSend());
+						size_t pos = message.find_last_of(",");
+						receiver = stoi(message.substr(pos + 1));
+
+						//std::cout<<"next_idx[recv] = "<<next_idx_[receiver]<<
+							//		", log_->last_idx = "<<log_->GetLast()->GetIndex()<<"\n";
+						if (next_idx_[receiver] == log_->GetLast()->GetIndex()) {
+							std::cout<<"receiver == "<<receiver<<"\n";
+							match_idx_[receiver] = next_idx_[receiver];
+							++next_idx_[receiver];
+						} else {
+							if (next_idx_[receiver] <= log_->GetLast()->GetIndex()) {
+								std::cout<<"next_idx[recv] = "<<next_idx_[receiver]<<
+									", log_->last_idx = "<<log_->GetLast()->GetIndex()<<"\n";
+								match_idx_[receiver] = next_idx_[receiver];
+								MyLogEntry *le = (MyLogEntry*)log_->Search(next_idx_[receiver] - 1);
+								ae_rpc_->SetData(id_, cur_term_, le->GetIndex(), le->GetTerm(), commit_idx_,
+										le->GetLogData());
+								next_idx_[receiver]++;
+								SendResponse(ae_rpc_->ToSend());
+							}
 						}
-						size_t replicated = 0;
+						if (commit_idx_ == log_->GetLast()->GetIndex())
+							return true;
+						size_t replicated = 1; // intially leader has already replicated
 						for (size_t i = 0; i < match_idx_.size(); ++i) {
+							std::cout<<"SERVER: for id = "<< i<<" match_idx = "<<match_idx_[i]<<"\n";
 							if (match_idx_[i] == log_->GetLast()->GetIndex()) {
 								replicated++;
 							}
 						}
+						std::cout<<"Replicated at "<<replicated<<"\n";
 						if (replicated > (cluster_size / 2)) {
 							commit_idx_++; // FIXME: ? or equal to log_->GetLast()->GetIndex()
-							sm_->Apply(log_->GetLast());
+							resp_ = sm_->Apply(log_->GetLast());
+							std::cout << "Leader: applying to sm, commit_idx_ = "<<commit_idx_<<"\n";
 						}
 					} else {
-						next_idx_[receiver_]--;
+						next_idx_[receiver]--;
 						size_t idx = 0,
 									 term = 0;
 						string str = "";
-						MyLogEntry *le = (MyLogEntry *)log_->Search(next_idx_[receiver_] - 1);
+						MyLogEntry *le = (MyLogEntry *)log_->Search(next_idx_[receiver] - 1);
 						if (le) {
 							idx = le->GetIndex();
 							term = le->GetTerm();

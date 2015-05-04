@@ -12,9 +12,9 @@ class MyStateMachine : public IStateMachine {
 	}
 	~MyStateMachine() {}
 
-	void Apply(ILogEntry *log_entry) {
+	std::string Apply(ILogEntry *log_entry) {
 		IAction *action = log_entry->GetAction();
-		action->Act(storage_);
+		return action->Act(storage_);
 	}
  private:
 	MyStorage *storage_;

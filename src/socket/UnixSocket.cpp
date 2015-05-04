@@ -113,7 +113,7 @@ size_t UnixSocket::Send(string data) {
 	if (sfd < 0) /* No client to send to */
 		return 0;
 	while ((remaining_bytes > 0) &&
-			   ((ret = send(sfd, to_send, remaining_bytes, 0)) > 0)) {
+			   ((ret = send(sfd, to_send, remaining_bytes, MSG_NOSIGNAL)) > 0)) {
 		remaining_bytes -= ret;
 		to_send += ret;
 	}
@@ -128,6 +128,7 @@ size_t UnixSocket::SendToAll(string data) {
 		client_sfd_ = clients_[i];
 		res += Send(data);
 	}
+	std::cout<<"Sent to all\n";
 	return res;
 }
 

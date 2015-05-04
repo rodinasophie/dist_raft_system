@@ -7,7 +7,7 @@ class MyResponse : public IResponse {
  public:
 	MyResponse() {}
 	~MyResponse() {}
-	void SetData(string &str) {
+	void SetData(string str) {
 		s_ = str;
 	}
 

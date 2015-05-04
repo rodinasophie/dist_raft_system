@@ -9,7 +9,7 @@ int main(int argc, char **argv) {
 	}
 	size_t id = atoi(argv[1]);
 	vector<server_t *> servers_arr;
-	json servers = json::parse_file("../src/server/servers_data.json");
+	json servers = json::parse_file("../src/server/servers_data1.json");
 
   for (size_t i = 0; i < servers.size(); ++i) {
 		try {

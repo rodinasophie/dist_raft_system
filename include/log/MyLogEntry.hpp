@@ -122,21 +122,18 @@ class MyLogEntry : public ILogEntry {
 		void SetAction(Action action) {
 			my_action_ = action;
 		}
-		void Act(IStorage *storage) {
+		string Act(IStorage *storage) {
 			switch (my_action_) {
 				case ADD:
-					storage->Add(le_->GetKey(), le_->GetValue());
-					break;
+					return storage->Add(le_->GetKey(), le_->GetValue());
 				case DELETE:
-					storage->Delete(le_->GetKey(), le_->GetValue());
-					break;
+					return storage->Delete(le_->GetKey());
 				case SET:
-					storage->Add(le_->GetKey(), le_->GetValue());
-					break;
+					return storage->Add(le_->GetKey(), le_->GetValue());
 				case GET:
-					storage->Add(le_->GetKey(), le_->GetValue());
-					break;
+					return storage->Get(le_->GetKey());
 			}
+			return "This cannot happen";
 		}
 	  private:
 			Action my_action_;
