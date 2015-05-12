@@ -20,37 +20,34 @@ class counted_ptr {
 		}
 	  return *this;
 	}
+	X& operator*()  const throw()   {return *itsCounter->ptr;}
+	X* operator->() const throw()   {return itsCounter->ptr;}
+	X* get()        const throw()   {return itsCounter ? itsCounter->ptr : 0;}
+	bool unique()   const throw() {
+		return (itsCounter ? itsCounter->count == 1 : true);
+	}
 
+ private:
+	struct counter {
+    counter(X* p = 0, unsigned c = 1) : ptr(p), count(c) {}
+    X*          ptr;
+    unsigned    count;
+  }* itsCounter;
 
-																		    X& operator*()  const throw()   {return *itsCounter->ptr;}
-																				    X* operator->() const throw()   {return itsCounter->ptr;}
-																						    X* get()        const throw()   {return itsCounter ? itsCounter->ptr : 0;}
-																								    bool unique()   const throw()
-																											        {return (itsCounter ? itsCounter->count == 1 : true);}
+  void acquire(counter* c) throw() { // increment the count
+	  itsCounter = c;
+    if (c)
+			++c->count;
+  }
 
-	private:
-
-																										    struct counter {
-																													        counter(X* p = 0, unsigned c = 1) : ptr(p), count(c) {}
-																																	        X*          ptr;
-																																					        unsigned    count;
-																																									    }* itsCounter;
-
-																												    void acquire(counter* c) throw()
-																															    { // increment the count
-																																		        itsCounter = c;
-																																						        if (c) ++c->count;
-																																										    }
-
-																														    void release()
-																																	    { // decrement the count, delete if it is 0
-																																				        if (itsCounter) {
-																																									            if (--itsCounter->count == 0) {
-																																																                delete itsCounter->ptr;
-																																																								                delete itsCounter;
-																																																																            }
-																																															            itsCounter = 0;
-																																																					        }
-																																								    }
+  void release() { // decrement the count, delete if it is 0
+    if (itsCounter) {
+      if (--itsCounter->count == 0) {
+        delete itsCounter->ptr;
+        delete itsCounter;
+      }
+			itsCounter = 0;
+   }
+	}
 };
 #endif // __COUNTED_PTR_HPP_
