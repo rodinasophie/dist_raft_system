@@ -2,6 +2,7 @@
 #include "state_machine/MyStateMachine.hpp"
 #include "log/MyLogEntry.hpp"
 #include "socket/UnixSocket.hpp"
+#include "lib/counted_ptr.hpp"
 
 RaftServer::RaftServer(size_t id, vector<server_t *> &servers) : cur_term_(0),
 		state_(FOLLOWER), servers_(servers), sfd_serv_for_serv_(NULL),
@@ -36,9 +37,24 @@ RaftServer::~RaftServer() {
 		delete sfd_serv_for_client_;
 
 	for (size_t i = 0; i < servs_as_clients_.size(); ++i) {
-		delete servs_as_clients_[i];
+		if (servs_as_clients_[i])
+			delete servs_as_clients_[i];
 	}
-	delete timer_;
+
+	if (timer_)
+		delete timer_;
+
+	if (log_)
+		delete log_;
+
+	if (rq_rpc_)
+		delete rq_rpc_;
+
+	if (ae_rpc_)
+		delete ae_rpc_;
+
+	if (sm_)
+		delete sm_;
 };
 
 void RaftServer::Run() {
@@ -143,7 +159,8 @@ void RaftServer::Run() {
 				if (mes != "") {
 					std::cout<<"\nAdding log entry with idx = "<<log_indx_<<"\n\n";
 					log_entry_ = new MyLogEntry(mes, cur_term_, log_indx_++);
-					log_->Add(log_entry_);
+					counted_ptr<ILogEntry> cptr(log_entry_);
+					log_->Add(cptr);
 				}
 				size_t prev_term = 0,
 							 prev_idx = 0;
@@ -152,10 +169,13 @@ void RaftServer::Run() {
 					prev_term = le->GetTerm();
 					prev_idx = le->GetIndex();
 				}
-				if ((log_entry_) && (commit_idx_ == log_entry_->GetIndex())) {
-					sfd_serv_for_client_->Send(resp_);
-					resp_ = "";
-					log_entry_ = NULL;
+				if (log_entry_) {
+					std::cout<<"COMMIT IDX = "<<log_entry_->GetIndex()<<"\n";
+					if (commit_idx_ == log_entry_->GetIndex()) {
+						sfd_serv_for_client_->Send(resp_);
+						resp_ = "";
+						log_entry_ = NULL;
+					}
 				}
 				ae_rpc_->SetData(id_, cur_term_, prev_idx, prev_term, commit_idx_, mes);
 				SendRPC(*ae_rpc_);
@@ -256,11 +276,11 @@ void RaftServer::ActWhenAppendEntry() {
 			log_->Delete(); // deletes the tail of incorrect entries
 			if (rpc->GetLogData() != "") {
 				std::cout<<"Before "<<rpc->GetLogData()<<"\n";
-				ILogEntry *le =
-					new MyLogEntry(rpc->GetLogData(), rpc->GetTransmitterTerm(),
-							rpc->GetPrevLogIdx() + 1);
+
+				counted_ptr<ILogEntry> cptr(new MyLogEntry(rpc->GetLogData(),
+						rpc->GetTransmitterTerm(), rpc->GetPrevLogIdx() + 1));
 				std::cout<<"After getting\n";
-				log_->Add(le);
+				log_->Add(cptr);
 				log_indx_ = rpc->GetPrevLogIdx() + 2;
 				std::cout << "Added to log2\n";
 			}
