@@ -14,16 +14,17 @@ class UnixSocket : public Socket {
 	UnixSocket();
 	~UnixSocket();
 
-	bool Connect(string &server_name, string &server_port);
+	void Reset();
+	int Connect(string &my_name, string &server_name, string &server_port);
 
-	bool Bind(int server_port);
-	bool AcceptIncomings();
-	size_t SendToAll(string data);
-
+	bool Bind(string ip, int server_port);
+	int AcceptIncomings(string &client_ip_addr);
+	bool SetReceiver(int sfd);
 	// If Send() was called from server's side,
 	// the recipient is the last client whose message was received
 	size_t Send(string data);
 	size_t Recv(string &data);
+	size_t SendToAll(const string &data);
 
  private:
 	int sfd_, client_sfd_;

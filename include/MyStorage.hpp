@@ -24,8 +24,14 @@ class MyStorage : public IStorage {
 	}
 
 	string Get(IKey *key) {
-		std::cout<<"Get func is called, returning  "<<storage_[key->ToString()]<< "\n";
-		return storage_[key->ToString()];
+		try {
+			string str = storage_.at(key->ToString());
+			std::cout<<"Returning "<<str<<"\n";
+			return str;
+		} catch (std::out_of_range &e) {
+			//std::cout<<"Returning -\n";
+			return "-";
+		}
 	}
 
  private:

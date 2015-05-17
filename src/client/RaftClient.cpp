@@ -18,9 +18,10 @@ bool RaftClient::Connect() {
 
 	server_t *server;
 	int count = 0;
+	string my_ip = "";
 	for (size_t i = 0; i < servers_.size(); ++i) {
 		server = servers_[i];
-		if (!sock_->Connect(server->ip_addr, server->port_client)) {
+		if (sock_->Connect(my_ip, server->ip_addr, server->port_client) < 0) {
 			continue;
 		}
 		string leader = "leader",
@@ -32,15 +33,31 @@ bool RaftClient::Connect() {
 			} else {
 				std::cout<<"Sent asking leader\n";
 			}
-			while (!sock_->Recv(rsp)) {
+			int recv_count = 0;
+			while (recv_count != MAX_CONNECT_TRIES_) {
+				try {
+					if (!sock_->Recv(rsp)) {
+						std::this_thread::sleep_for(std::chrono::milliseconds(100));
+						++recv_count;
+					} else {
+						std::cout<<"Recved\n";
+						break;
+					}
+				} catch (std::exception &e) {}
+			}
+			if (recv_count == MAX_CONNECT_TRIES_) {
+				count = 0;
+				std::cout<<"Leader doesnt answer\n";
+				continue; // our serv has shutted down, connect to another server
 			}
 			int id = stoi(rsp);
+			std::cout<<"id = "<<id<<"\n";
+			// server doesn't know who the leader is
 			if (id < 0) {
 				++count;
 				if (count == MAX_CONNECT_TRIES_) { // leader is not chosen
 					return false;
 				}
-				std::cout<<"Sleeping\n";
 				std::this_thread::sleep_for(std::chrono::seconds(2));
 				continue;
 			}
@@ -54,7 +71,8 @@ bool RaftClient::Connect() {
 				if (servers_[j]->id == (size_t)id) {
 					delete sock_;
 					sock_ = new UnixSocket();
-					if (!sock_->Connect(servers_[j]->ip_addr, servers_[j]->port_client)) {
+					std::cout<<"Connecting to ip " <<servers_[j]->ip_addr<<", port = "<<servers_[j]->port_client<<"\n";
+					if (sock_->Connect(my_ip, servers_[j]->ip_addr, servers_[j]->port_client) < 0) {
 						return false;
 					}
 					server = servers_[j];

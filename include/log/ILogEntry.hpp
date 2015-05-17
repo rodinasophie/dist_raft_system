@@ -16,6 +16,7 @@ class ILogEntry {
 	virtual IKey *GetKey() = 0;
 	virtual IValue *GetValue() = 0;
 	virtual IAction *GetAction() = 0;
+	virtual string &GetLogData() = 0;
 
 	void SetIndex(size_t idx) {
 		idx_ = idx;

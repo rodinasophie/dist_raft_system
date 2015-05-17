@@ -19,6 +19,7 @@ using jsoncons::json;
 
 typedef struct server {
 	size_t id;
+	size_t sfd;
 	string ip_addr;
 	string port_serv;
 	string port_client;

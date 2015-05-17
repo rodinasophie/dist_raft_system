@@ -11,11 +11,14 @@ class Log {
  public:
 	Log() : searched_(0), is_consistent_(false) {
 		log_entries_.clear();
+		matching_entry_found_ = false;
 	};
 	~Log() {};
 	void Add(counted_ptr<ILogEntry> &ptr) {
-		std::cout<<"LOG:Added to log, size == "<<log_entries_.size()<<"\n";
 		log_entries_.push_back(ptr);
+		std::cout<<"Adding idx = "<<ptr.get()->GetIndex()<<
+			", term = "<<ptr.get()->GetTerm()<<"\n";
+		std::cout<<"LOG:Added to log, size == "<<log_entries_.size()<<"\n";
 	}
 
 	ILogEntry *Extract() {
@@ -42,10 +45,7 @@ class Log {
 	ILogEntry *GetPrevLast() {
 		if ((log_entries_.empty()) || (log_entries_.size() == 1))
 			return NULL;
-		auto it = log_entries_.end();
-		--it;
-		--it;
-		return it->get();
+		return log_entries_[log_entries_.size() - 2].get();
 	}
 
 	bool Search(size_t term, size_t idx) {
@@ -61,8 +61,8 @@ class Log {
 	}
 
 	ILogEntry *Search(size_t idx) {
-		std::cout<<"idx = "<<idx<<", size = "<<log_entries_.size()<<"\n";
-		if (idx <= log_entries_.size())
+		//std::cout<<"Search for idx = "<< idx-1<<"\n";
+		if ((idx <= log_entries_.size()) && (idx >= 1))
 			return log_entries_[idx - 1].get();
 		return NULL;
 	}
@@ -78,14 +78,21 @@ class Log {
 	bool IsConsistent() {
 		return is_consistent_;
 	}
-
+	bool IsMatchingEntryFound() {
+		return matching_entry_found_;
+	}
 	void SetConsistent(bool state) {
 		is_consistent_ = state;
+	}
+
+	void SetMatchingEntryFound(bool state) {
+		matching_entry_found_ = state;
 	}
  private:
 	vector<counted_ptr<ILogEntry>> log_entries_;
 	size_t searched_;
-	bool is_consistent_;
+	bool is_consistent_,
+			 matching_entry_found_;
 };
 
 #endif // __LOG_HPP_

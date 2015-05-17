@@ -7,6 +7,8 @@
 #include "socket/UnixSocket.hpp"
 #include "lib/lib.hpp"
 #include "state_machine/IStateMachine.hpp"
+#include <set>
+using std::set;
 
 class RPC;
 class RequestVoteRPC;
@@ -43,14 +45,14 @@ class RaftServer : public ConsensusServer {
 				 leader_id_,
 				 voted_for_,
 				 log_indx_,
-				 elect_timeout_,
-				 receiver_;
+				 elect_timeout_;
 	std::string resp_;
 	bool i_voted_;
 	high_resolution_clock::time_point start;
 	vector<size_t> next_idx_;
 	vector<size_t> match_idx_;
-
+	vector<bool> non_empty_le_;
+	set <size_t> shutted_servers_;
 	RPC *rpc_;
 	RequestVoteRPC *rq_rpc_;
 	AppendEntryRPC *ae_rpc_;
@@ -59,9 +61,16 @@ class RaftServer : public ConsensusServer {
 	Timer *timer_;
 	IStateMachine *sm_;
 
+	enum Rpc {
+		APPEND_ENTRY,
+		REQUEST_VOTE,
+		INSTALL_SNAPSHOT,
+	};
+
 	bool ReceiveRPC();
-	void SendRPC(RPC &rpc);
+	void SendRPCToAll(Rpc type, bool is_empty = true);
 	void SendResponse(std::string resp);
+	void SendAppendEntry(size_t to);
 };
 
 // RPC protocol:
@@ -99,26 +108,42 @@ class AppendEntryRPC : public RPC {
  public:
 	AppendEntryRPC() {}
 	void SetData(size_t id, size_t cur_term, size_t prev_log_idx,
-			size_t prev_log_term, size_t commit_idx, string &log_record) {
+			size_t prev_log_term, size_t commit_idx, size_t log_en_term,
+			size_t log_en_idx, string &log_record) {
 		RPC::SetData(id, cur_term);
 		std::stringstream ss;
+
 		prev_log_idx_ = prev_log_idx;
 		ss << prev_log_idx_;
 		data_ += "," + ss.str();
+
 		ss.str("");
 		prev_log_term_ = prev_log_term;
 		ss << prev_log_term_;
 		data_ += "," + ss.str();
+
 		ss.str("");
 		commit_idx_ = commit_idx;
 		ss << commit_idx_;
 		data_ += "," + ss.str();
+
+		ss.str("");
+		log_en_term_ = log_en_term;
+		ss << log_en_term_;
+		data_ += "," + ss.str();
+
+		ss.str("");
+		log_en_idx_ = log_en_idx;
+		ss << log_en_idx_;
+		data_ += "," + ss.str();
+
 		log_record_ = log_record;
 	}
 	~AppendEntryRPC() {}
 
 	void SetData(string mes) {
-		// A,id,term,prev_log_idx,prev_log_term,commit_idx,log_entry
+		// A,id,term,prev_log_idx,prev_log_term,commit_idx,
+		// log_entry_term, log_entry_idx,log_entry
 		size_t pos = mes.find(",");
 		pos = mes.find(",", pos + 1);
 		id_ = stoi(mes.substr(2, pos - 2));
@@ -134,9 +159,16 @@ class AppendEntryRPC : public RPC {
 		first = pos + 1;
 		pos = mes.find(",", pos + 1);
 		commit_idx_ = stoi(mes.substr(first, pos - first));
+		first = pos + 1;
+		pos = mes.find(",", pos + 1);
+		log_en_term_ = stoi(mes.substr(first, pos - first));
+		first = pos + 1;
+		pos = mes.find(",", pos + 1);
+		log_en_idx_ = stoi(mes.substr(first, pos - first));
 		log_record_ = mes.substr(pos + 1);
 		if (log_record_ != "")
-			std::cout << "Setting data in ApEntry log_record = "<<log_record_<<", all mes = "<<mes<<"\n";
+			std::cout << "Setting data in ApEntry log_record = "
+				<<log_record_<<", all mes = "<<mes<<"\n";
 	}
 
 	string ToSend() {
@@ -160,6 +192,14 @@ class AppendEntryRPC : public RPC {
 		return prev_log_term_;
 	}
 
+	size_t GetLogEntryTerm() {
+		return log_en_term_;
+	}
+
+	size_t GetLogEntryIdx() {
+		return log_en_idx_;
+	}
+
 	size_t GetLeaderCommitIdx() {
 		return commit_idx_;
 	}
@@ -167,6 +207,8 @@ class AppendEntryRPC : public RPC {
 	std::string log_record_;
 	size_t prev_log_idx_,
 				 prev_log_term_,
+				 log_en_term_,
+				 log_en_idx_,
 				 commit_idx_;
 };
 
