@@ -527,7 +527,8 @@ void RaftServer::ActWhenInstallSnapshot() {
 		f << snapshot_.Get();
 		f.close();
 	}
-	// TODO: write snapshop to file
+	string resp = "!I," + cur_term_;
+	SendResponse(resp);
 }
 
 
@@ -658,7 +659,7 @@ bool RaftServer::ReceiveRPC() {
 						SendAppendEntry(receiver);
 					}
 				} else {
-					// InstallSnapshotting Resp
+					// XXX: do nothing here, only terminfo is useful(handled above)
 				}
 		}
 		return true;
