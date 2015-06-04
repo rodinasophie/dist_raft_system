@@ -6,6 +6,8 @@
 #include "timer/Timer.hpp"
 #include "socket/UnixSocket.hpp"
 #include "lib/lib.hpp"
+#include "include/Mutex.hpp"
+#include "include/ThreadSafeString.hpp"
 #include "state_machine/IStateMachine.hpp"
 #include <set>
 using std::set;
@@ -13,6 +15,7 @@ using std::set;
 class RPC;
 class RequestVoteRPC;
 class AppendEntryRPC;
+class InstallSnapshotRPC;
 
 class RaftServer : public ConsensusServer {
  public:
@@ -23,6 +26,7 @@ class RaftServer : public ConsensusServer {
 
 	void ActWhenRequestVote();
 	void ActWhenAppendEntry();
+	void ActWhenInstallSnapshot();
 
  private:
 	size_t cur_term_;
@@ -45,8 +49,10 @@ class RaftServer : public ConsensusServer {
 				 leader_id_,
 				 voted_for_,
 				 log_indx_,
-				 elect_timeout_;
-	std::string resp_;
+				 elect_timeout_,
+				 last_snapshot_idx_,
+				 last_snapshot_term_;
+	std::string resp_, filename_;
 	bool i_voted_;
 	high_resolution_clock::time_point start;
 	vector<size_t> next_idx_;
@@ -56,10 +62,15 @@ class RaftServer : public ConsensusServer {
 	RPC *rpc_;
 	RequestVoteRPC *rq_rpc_;
 	AppendEntryRPC *ae_rpc_;
+	InstallSnapshotRPC *insn_rpc_;
 	Log *log_;
 	ILogEntry *log_entry_;
 	Timer *timer_;
 	IStateMachine *sm_;
+
+	ThreadSafeString snapshot_;
+	Mutex mtx_;
+	const size_t MAX_LOG_SIZE_ = 2048; // TODO: set it wisely
 
 	enum Rpc {
 		APPEND_ENTRY,
@@ -67,10 +78,14 @@ class RaftServer : public ConsensusServer {
 		INSTALL_SNAPSHOT,
 	};
 
+	size_t SetId();
 	bool ReceiveRPC();
 	void SendRPCToAll(Rpc type, bool is_empty = true);
 	void SendResponse(std::string resp);
 	void SendAppendEntry(size_t to);
+	void SendInstallSnapshot(size_t to);
+	void InitSMFromSnapshot(string snapshot);
+	void CreateSnapshot(string filename);
 };
 
 // RPC protocol:
@@ -172,7 +187,7 @@ class AppendEntryRPC : public RPC {
 	}
 
 	string ToSend() {
-		// XXX: Shpuld not be called after SetData(mes) initialization(data_ not set)
+		// XXX: Should not be called after SetData(mes) initialization(data_ not set)
 		return "A," + data_ + "," + log_record_;
 	}
 
@@ -248,6 +263,7 @@ class RequestVoteRPC : public RPC {
 	}
 
 	string ToSend() {
+		// XXX: Should not be called after SetData(mes) initialization(data_ not set)
 		return "R," + data_;
 	}
 
@@ -262,6 +278,101 @@ class RequestVoteRPC : public RPC {
  private:
 	size_t last_log_idx_,
 				 last_log_term_;
+	std::mutex mtx_;
+};
+
+class InstallSnapshotRPC : public RPC {
+ public:
+	InstallSnapshotRPC() {}
+	~InstallSnapshotRPC() {}
+	// Packing
+	// I,id,cur_term,last_incl_idx,last_incl_term,offset,raw_data,done
+	void SetData(size_t id, size_t cur_term, size_t last_incl_idx,
+			size_t last_incl_term, size_t offset, string &raw_data, bool done) {
+		RPC::SetData(id, cur_term);
+		std::stringstream ss;
+		last_incl_idx_ = last_incl_idx;
+		ss << last_incl_idx_;
+		data_ += "," + ss.str();
+
+		ss.str("");
+		last_incl_term_ = last_incl_term;
+		ss << last_incl_term_;
+		data_ += "," + ss.str();
+
+		ss.str("");
+		offset_ = offset;
+		ss << offset_;
+		data_ += "," + ss.str();
+
+		data_ += "," + raw_data;
+
+		ss.str("");
+		done_ = done;
+		ss << done_;
+		data_ += "," + ss.str();
+		// TODO: raw data is missing
+	}
+	// Unpacking
+	void SetData(string mes) {
+		// I,id,cur_term,last_incl_idx,last_incl_term,offset,raw_data,done
+		size_t pos = mes.find(",");
+		std::cout << "Sending " <<mes<<"\n";
+		pos = mes.find(",", pos + 1);
+		id_ = stoi(mes.substr(2, pos - 2));
+		size_t fir = pos + 1;
+		pos = mes.find(",", pos + 1);
+		cur_term_ = stoi(mes.substr(fir, pos - fir));
+		fir = pos + 1;
+		pos = mes.find(",", pos + 1);
+		last_incl_idx_ = stoi(mes.substr(fir, pos - fir));
+		fir = pos + 1;
+		pos = mes.find(",", pos + 1);
+		last_incl_term_ = stoi(mes.substr(fir, pos - fir));
+		fir = pos + 1;
+		pos = mes.find(",", pos + 1);
+		offset_ = stoi(mes.substr(fir, pos - fir));
+		fir = pos + 1;
+		pos = mes.find(",", pos + 1);
+		raw_data_ = mes.substr(fir, pos - fir);
+		done_ = stoi(mes.substr(pos + 1));
+	}
+
+	string ToSend() {
+		// XXX: Should not be called after SetData(mes)
+		// initialization(data_ not set)
+		return "I," + data_;
+	}
+
+	void Act(RaftServer *raftserver) {
+		raftserver->ActWhenInstallSnapshot();
+	}
+
+	size_t GetLastInclIdx() {
+		return last_incl_idx_;
+	}
+
+	size_t GetLastInclTerm() {
+		return last_incl_term_;
+	}
+
+	size_t GetSnapshotOffset() {
+		return offset_;
+	}
+
+	bool ShapshotIsDone() {
+		return done_;
+	}
+
+	string GetRawData() {
+		return raw_data_;
+	}
+ private:
+	size_t last_incl_idx_,
+				 last_incl_term_,
+				 offset_;
+	bool done_;
+	string raw_data_;
 };
 
 #endif // __RAFT_SERVER_HPP_

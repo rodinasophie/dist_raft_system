@@ -23,6 +23,10 @@ class MyStorage : public IStorage {
 		return "-";
 	}
 
+	void Reset() {
+		storage_.clear();
+	}
+
 	string Get(IKey *key) {
 		try {
 			string str = storage_.at(key->ToString());
@@ -34,6 +38,15 @@ class MyStorage : public IStorage {
 		}
 	}
 
+	std::string GetContents() {
+		std::string res = "";
+		for (auto it = storage_.begin(); it != storage_.end();
+				++it) {
+			res += it->first + ":" + it->second + "|";
+		}
+		res.resize(res.length() - 1);
+		return res;
+	}
  private:
 	std::map<string, string> storage_;
 };

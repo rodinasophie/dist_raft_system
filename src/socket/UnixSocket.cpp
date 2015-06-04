@@ -7,6 +7,7 @@
 #include <sys/param.h>
 #include <string.h>
 #include <stdio.h>
+#include <ifaddrs.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <thread>
@@ -81,6 +82,31 @@ int UnixSocket::Connect(string &my_name, string &server_name, string &port_name)
 	sfd_ = sfd;
 	state_ = CLIENT;
 	return sfd;
+}
+// XXX: Method is not suitable for one machine testing
+std::string UnixSocket::GetExternalIP() {
+	struct ifaddrs *ifaddr, *ifa;
+	int family;
+	char host[NI_MAXHOST];
+	if (getifaddrs(&ifaddr) == -1) {
+		exit(EXIT_FAILURE);
+	}
+	for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+		if (!strcmp(ifa->ifa_name, "wlan0")) {
+			family = ifa->ifa_addr->sa_family;
+			if (family == AF_INET) {
+				int s;
+				s = getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in), host,
+						NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
+				if (s) {
+					string str(host);
+					return str;
+				}
+			}
+		}
+	}
+	// abort if ip cannot be found
+	abort();
 }
 
 bool UnixSocket::Bind(string ip, int server_port) {

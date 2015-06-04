@@ -8,6 +8,7 @@ LOCAL_INCLUDES_PATH = LOCAL_PATH + "include"
 LOCAL_LIB_PATH      = LOCAL_PATH + "lib"
 
 SERVER_PATH = LOCAL_SOURCE_PATH + '/' + "server"
+LOG_PATH = LOCAL_SOURCE_PATH + '/' + "log"
 SERVER_INCLUDES = LOCAL_INCLUDES_PATH + '/' + "server"
 
 SOCKET_INCLUDES = LOCAL_INCLUDES_PATH + '/' + "socket"
@@ -23,6 +24,10 @@ SYSTEM_SRC = Split("""
 	server_main.cpp
 	""")
 
+LOG_SRC = Split("""
+	Log.cpp
+	""")
+
 SOCKET_PATH = LOCAL_SOURCE_PATH + '/' + "socket"
 SOCKET_SRC = Split("""
 	UnixSocket.cpp
@@ -33,7 +38,8 @@ TIMER_PATH = "timer"
 
 SOURCE_FILES = ( \
 	(addprefix(SERVER_PATH + '/', SYSTEM_SRC)) + \
-	(addprefix(SOCKET_PATH + '/', SOCKET_SRC)) \
+	(addprefix(SOCKET_PATH + '/', SOCKET_SRC)) + \
+	(addprefix(LOG_PATH + '/', LOG_SRC)) \
 	)
 
 LOCAL_INCLUDES = ( \

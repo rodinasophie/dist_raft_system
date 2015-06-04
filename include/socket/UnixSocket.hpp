@@ -26,6 +26,8 @@ class UnixSocket : public Socket {
 	size_t Recv(string &data);
 	size_t SendToAll(const string &data);
 
+	static std::string GetExternalIP();
+
  private:
 	int sfd_, client_sfd_;
 	vector<int> clients_;
