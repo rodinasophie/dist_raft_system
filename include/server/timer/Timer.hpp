@@ -13,6 +13,10 @@ class Timer {
 		start_ = high_resolution_clock::now();
 	}
 
+	milliseconds TimeSpent() {
+		return duration_cast<milliseconds>(high_resolution_clock::now() - start_);
+	}
+
 	bool TimedOut() {
 		if (duration_cast<milliseconds>(high_resolution_clock::now() - start_) > timeout_)
 			return true;

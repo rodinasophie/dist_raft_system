@@ -30,10 +30,10 @@ class MyStorage : public IStorage {
 	string Get(IKey *key) {
 		try {
 			string str = storage_.at(key->ToString());
-			std::cout<<"Returning "<<str<<"\n";
+			//std::cout<<"Returning "<<str<<"\n";
 			return str;
 		} catch (std::out_of_range &e) {
-			//std::cout<<"Returning -\n";
+			////std::cout<<"Returning -\n";
 			return "-";
 		}
 	}
@@ -44,7 +44,7 @@ class MyStorage : public IStorage {
 				++it) {
 			res += it->first + ":" + it->second + "|";
 		}
-		res.resize(res.length() - 1);
+		//std::cout<<"Snapshot is ready "<< res<<"\n";
 		return res;
 	}
  private:

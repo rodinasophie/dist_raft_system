@@ -1,5 +1,5 @@
-# Building script for a distributed system based on Raft algorithm
-# Server's side
+# Building script for a distributed system tests
+# Tests
 
 LOCAL_PATH = "../../"
 
@@ -7,9 +7,10 @@ LOCAL_SOURCE_PATH   = LOCAL_PATH + "src"
 LOCAL_INCLUDES_PATH = LOCAL_PATH + "include"
 LOCAL_LIB_PATH      = LOCAL_PATH + "lib"
 
-SERVER_PATH = LOCAL_SOURCE_PATH + '/' + "server"
-LOG_PATH = LOCAL_SOURCE_PATH + '/' + "log"
 SERVER_INCLUDES = LOCAL_INCLUDES_PATH + '/' + "server"
+
+CLIENT_PATH = LOCAL_SOURCE_PATH + '/' + "client"
+CLIENT_INCLUDES = LOCAL_INCLUDES_PATH + '/' + "client"
 
 SOCKET_INCLUDES = LOCAL_INCLUDES_PATH + '/' + "socket"
 
@@ -19,13 +20,15 @@ def addprefix(prefix, items):
 		result += [prefix + item]
 	return result
 
+TEST_PATH = "tests"
+JSON_PATH = "json/src"
+
 SYSTEM_SRC = Split("""
-	RaftServer.cpp
-	server_main.cpp
+	RaftClient.cpp
 	""")
 
-LOG_SRC = Split("""
-	Log.cpp
+TEST_SRC = Split("""
+	test.cpp
 	""")
 
 SOCKET_PATH = LOCAL_SOURCE_PATH + '/' + "socket"
@@ -33,23 +36,20 @@ SOCKET_SRC = Split("""
 	UnixSocket.cpp
 	""")
 
-JSON_PATH = "json/src"
-TIMER_PATH = "timer"
-
-SOURCE_FILES = ( \
-	(addprefix(SERVER_PATH + '/', SYSTEM_SRC)) + \
-	(addprefix(SOCKET_PATH + '/', SOCKET_SRC)) + \
-	(addprefix(LOG_PATH + '/', LOG_SRC)) \
+LOCAL_INCLUDES = ( \
+	[LOCAL_PATH] + \
+	[SERVER_INCLUDES] + \
+	[LOCAL_INCLUDES_PATH] + \
+	[CLIENT_INCLUDES] + \
+	[SOCKET_INCLUDES] + \
+	[LOCAL_INCLUDES_PATH + '/' + TEST_PATH] + \
+	[LOCAL_LIB_PATH + '/' + JSON_PATH] \
 	)
 
-LOCAL_INCLUDES = ( \
-	[SERVER_INCLUDES] + \
-	[SOCKET_INCLUDES] + \
-	[LOCAL_INCLUDES_PATH] + \
-	[SERVER_INCLUDES + TIMER_PATH] + \
-	[LOCAL_PATH] + \
-	[LOCAL_LIB_PATH] + \
-	[LOCAL_LIB_PATH + '/' + JSON_PATH] \
+SOURCE_FILES = ( \
+	(addprefix(CLIENT_PATH + '/', SYSTEM_SRC)) + \
+	(addprefix(SOCKET_PATH + '/', SOCKET_SRC)) + \
+	(addprefix(LOCAL_SOURCE_PATH + '/' + TEST_PATH + '/', TEST_SRC)) \
 	)
 
 LOCAL_FLAGS = '-g -O3 -std=c++11 -Wnon-virtual-dtor -pthread'
@@ -59,11 +59,11 @@ LOCAL_LINKFLAGS = ["-rdynamic", "-pthread"]
 cppdefines = []
 #cppdefines.append('_SNAPSHOTTING')
 
-env = Environment(CXX = 'clang++',
+env = Environment(CXX='clang++',
 									CPPFLAGS = LOCAL_FLAGS,
 									CPPPATH = LOCAL_INCLUDES,
 									CCFLAGS=CCFLAGS,
 									LINKFLAGS = LOCAL_LINKFLAGS,
 									CPPDEFINES = cppdefines)
-VariantDir("../../out/", '.', duplicate = 0)
-env.Program(target = "../../out/server", source = SOURCE_FILES)
+VariantDir("../../out", '.', duplicate = 0)
+env.Program(target = "../../out/test", source = SOURCE_FILES)

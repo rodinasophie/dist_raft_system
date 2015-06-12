@@ -150,7 +150,7 @@ int UnixSocket::AcceptIncomings(string &client_ip_addr) {
 	clients_.push_back(client_sfd);
 	return client_sfd;
 }
-
+size_t UnixSocket::latency;
 size_t UnixSocket::Send(string data) {
   if (state_ == NOT_INITED) {
 		// TODO: Set logging
@@ -165,10 +165,15 @@ size_t UnixSocket::Send(string data) {
 
 	if (sfd < 0) /* No client to send to */
 		return 0;
+	errno = 0;
+	usleep(UnixSocket::latency);
 	while ((remaining_bytes > 0) &&
 			   ((ret = send(sfd, to_send, remaining_bytes, MSG_NOSIGNAL)) > 0)) {
 		remaining_bytes -= ret;
 		to_send += ret;
+	}
+	if (errno == EPIPE) {
+		return 0;
 	}
 	return size - remaining_bytes;
 }

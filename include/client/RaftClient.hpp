@@ -13,9 +13,11 @@ class RaftClient : public ConsensusClient {
 	bool Connect();
 	bool SendRequest(ILogEntry *log_entry);
 	bool GetResponse(IResponse *resp);
+	size_t GetLeaderId();
 
  private:
 	Socket *sock_;
+	size_t leader_id_;
 	bool sock_connected_;
 	vector<server_t *> servers_;
 	const int MAX_CONNECT_TRIES_ = 20;

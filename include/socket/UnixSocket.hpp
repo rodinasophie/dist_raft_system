@@ -27,7 +27,7 @@ class UnixSocket : public Socket {
 	size_t SendToAll(const string &data);
 
 	static std::string GetExternalIP();
-
+	static size_t latency;
  private:
 	int sfd_, client_sfd_;
 	vector<int> clients_;

@@ -20,7 +20,7 @@ class ILogEntry {
 
 	void SetIndex(size_t idx) {
 		idx_ = idx;
-		std::cout<<"Setting idx_ to "<<idx_<< " or "<<idx<<"\n";
+		//std::cout<<"Setting idx_ to "<<idx_<< " or "<<idx<<"\n";
 	}
 
 	size_t GetIndex() {

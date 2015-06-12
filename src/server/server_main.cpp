@@ -2,14 +2,15 @@
 #include "server/RaftServer.hpp"
 
 int main(int argc, char **argv) {
-	if (argc != 2) {
+	if (argc != 3) {
 		// TODO: Set logging
-		// ./server id
+		// ./server id config.json
 		return -1;
 	}
 	size_t id = atoi(argv[1]);
+	//std::cout<<"Running server "<< id<<"with file "<< argv[2]<<"\n";
 	vector<server_t *> servers_arr;
-	json servers = json::parse_file("../src/server/servers_data1.json");
+	json servers = json::parse_file(argv[2]);
 
   for (size_t i = 0; i < servers.size(); ++i) {
 		try {
