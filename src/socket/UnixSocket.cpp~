@@ -166,7 +166,7 @@ size_t UnixSocket::Send(string data) {
 	if (sfd < 0) /* No client to send to */
 		return 0;
 	errno = 0;
-	//usleep(UnixSocket::latency);
+	usleep(UnixSocket::latency);
 	while ((remaining_bytes > 0) &&
 			   ((ret = send(sfd, to_send, remaining_bytes, MSG_NOSIGNAL)) > 0)) {
 		remaining_bytes -= ret;

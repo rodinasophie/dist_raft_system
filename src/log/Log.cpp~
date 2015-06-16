@@ -4,7 +4,7 @@
 
 size_t Log::idx_to_find_ = 0;
 void Log::Add(counted_ptr<ILogEntry> &ptr) {
-	m_.Lock();
+			m_.Lock();
 	log_entries_.push_back(ptr);
 	//std::cout<<"Adding idx = "<<ptr.get()->GetIndex()<<
 		//", term = "<<ptr.get()->GetTerm()<<"\n";

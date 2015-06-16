@@ -91,10 +91,8 @@ class TimeTest : public RaftTest {
 		sleep(1);
 		std::thread t(&TimeTest::RunClient, this, filename);
 		while (leader_id_.load(std::memory_order_relaxed) < 0) {}
-		while (servers_.size() > ((cluster_size_ / 2) + 1)) {
-			sleep(1);
-			KillCandidate();
-		}
+		sleep(1);
+		KillCandidate();
 		t.join();
 		KillAll();
 	}

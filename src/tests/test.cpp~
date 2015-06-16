@@ -7,5 +7,5 @@ int main(int argc, char **argv) {
 	}
 	TimeTest test;
 	//test.SetLatency(20000); // microsecond
-	test.Run(CANDIDATE_CRASH, argv[1]);
+	test.Run(GENERAL, argv[1]);
 }
