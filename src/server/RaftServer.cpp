@@ -14,8 +14,8 @@ RaftServer::RaftServer(size_t id, vector<server_t *> &servers) : cur_term_(0),
 	log_indx_ = 1;
 	sock_ = NULL;
 	srand(time(NULL));
-	elect_timeout_ = 150 + rand() % 150; // 150 - 300 ms
-	//std::cout << "My timeout is "<<elect_timeout_<<"\n";
+	elect_timeout_ = 150 + rand() % 51;  // 150 - 300 ms
+	// << "My timeout is "<<elect_timeout_<<"\n";
 	last_snapshot_idx_ = 0;
 	last_snapshot_term_ = 0;
 	resp_ = "";
@@ -79,20 +79,20 @@ size_t RaftServer::SetId() {
 }
 
 void RaftServer::Run() {
-	// XXX: Uncomment for really distributed testing
-	// id_ = SetId();
+	 //XXX: Uncomment for really distributed testing
+	 //id_ = SetId();
 #ifdef _SNAPSHOTTING
 		filename_ = "/home/sonya/dist_raft_system/snapshot" + std::to_string(id_);
 		ofstream f;
 		f.open(filename_);
 
-		// TODO
+		 //TODO
 		if (false) {
 			string snapshot;
-			//f >> snapshot;
+			f >> snapshot;
 			InitSMFromSnapshot(snapshot);
 		}
-#endif // _SNAPSHOTTING
+#endif  //_SNAPSHOTTING
 	size_t me = servers_.size();
 	for (size_t i = 0; i < servers_.size(); ++i) {
 		if (servers_[i]->id == id_) {
@@ -101,7 +101,7 @@ void RaftServer::Run() {
 		}
 	}
 	if (me == servers_.size()) {
-		// TODO: Set logging: ERROR: No suitable server!!!
+		 //TODO: Set logging: ERROR: No suitable server!!!
 		return;
 	}
 	sfd_serv_for_client_->Bind(servers_[me]->ip_addr,
@@ -127,7 +127,7 @@ void RaftServer::Run() {
 			}
 		}
 		if (count == CONNECT_TRIES) {
-			// TODO: Set logging: ERROR, server was not binded, cant work!
+			 //TODO: Set logging: ERROR, server was not binded, cant work!
 			return;
 		}
 		++j;
@@ -151,31 +151,32 @@ void RaftServer::Run() {
 		}
 	}
 
-	//std::cout << "server #" << id_ << "has established connection" << std::endl;
-	// XXX: Here connection already should be established between all servers
+	// << "server #" << id_ << "has established connection" << std::endl;
+	 //XXX: Here connection already should be established between all servers
 
 	string message;
 	// Finding the leader
 	timer_->Run();
 	while (1) {
+		rpc_ = NULL;
 		if (ReceiveRPC()) {
 			if (rpc_) {
 				rpc_->Act(this);
 			}
 			timer_->Run();
-		} else {
-			// Initiate new election
-			if ((timer_->TimedOut()) && (state_ != LEADER)) {
-				//std::cout<<"I wanna be a leader\n";
-				voted_for_ = 0;
-				cur_term_++;
-				state_ = CANDIDATE;
-				++voted_for_;
-				i_voted_ = true;
-				SendRPCToAll(REQUEST_VOTE);
-				timer_->Run();
-			}
-			string mes = "";
+		}
+		 //Initiate new election
+		if ((timer_->TimedOut()) && (state_ != LEADER)) {
+			//<<"I wanna be a leader\n";
+			voted_for_ = 0;
+			cur_term_++;
+			state_ = CANDIDATE;
+			++voted_for_;
+			i_voted_ = true;
+			SendRPCToAll(REQUEST_VOTE);
+			timer_->Run();
+		}
+		string mes = "";
 			for (auto it = shutted_servers_.begin(); it != shutted_servers_.end();) {
 				int sfd;
 				if ((sfd = servs_as_clients_[*it]->Connect(
@@ -184,7 +185,7 @@ void RaftServer::Run() {
 								servers_[me - (*it + 1)]->port_serv)) >= 0) {
 					servers_[me - (*it + 1)]->sfd = sfd;
 					shutted_servers_.erase(it++);
-					//std::cout<<"Erased\n";
+					//<<"Erased\n";
 				} else {
 					++it;
 				}
@@ -196,45 +197,45 @@ void RaftServer::Run() {
 					for (size_t i = 0; i < servers_.size(); ++i) {
 						if (ip_addr == servers_[i]->ip_addr) {
 							servers_[i]->sfd = sfd;
-							//std::cout<<"\n\nServer "<<i <<" is restored\n\n";
+							//<<"\n\nServer "<<i <<" is restored\n\n";
 						}
 					}
 				}
 			}
 			if (sfd_serv_for_client_->AcceptIncomings(ip_addr) >= 0) {
-				//std::cout<<"New client connection\n";
+				//<<"New client connection\n";
 			}
 			if (!log_entry_) {
 				try {
 					if (sfd_serv_for_client_->Recv(mes) > 0 ) {
-						//std::cout<<"mes from client\n";
+						//<<"mes from client\n";
 					}
 				} catch (exception &e) {
-					//std::cout<<"Client is dead\n";
-					// client is dead, it doesn't matter
+					//<<"Client is dead\n";
+					 //client is dead, it doesn't matter
 				}
 			}
 			if (mes != "") {
-				//std::cout << "We received from client "<<mes<<"\n";
+				// << "We received from client "<<mes<<"\n";
 			}
 			if (mes == "leader") {
 				std::stringstream ss;
 				ss << leader_id_;
-				//std::cout<<"Sending leader "<< leader_id_<<"\n";
+				//<<"Sending leader "<< leader_id_<<"\n";
 				sfd_serv_for_client_->Send(ss.str());
 				continue;
 			}
 
 			if (state_ == LEADER) {
 				if (mes != "") {
-					//std::cout<<"\nAdding log entry with idx = "<<log_indx_<<"\n\n";
+					//<<"\nAdding log entry with idx = "<<log_indx_<<"\n\n";
 					log_entry_ = new MyLogEntry(mes, cur_term_, log_indx_++);
 					counted_ptr<ILogEntry> cptr(log_entry_);
 					log_->Add(cptr);
 					match_idx_[me] = log_entry_->GetIndex();
 				}
 				if (log_entry_) {
-					// we have committed the last client entry
+					 //we have committed the last client entry
 					if (commit_idx_ == log_entry_->GetIndex()) {
 						sfd_serv_for_client_->Send(resp_);
 						resp_ = "";
@@ -250,33 +251,32 @@ void RaftServer::Run() {
 			size_t size;
 			if (((size = log_->GetLengthInBytes()) >= MAX_LOG_SIZE_) &&
 					(!is_snapshotting_.load(std::memory_order_relaxed))) {
-				//std::cout<<"Making snapshot\n";
+				//<<"Making snapshot\n";
 				is_snapshotting_ = true;
 				std::thread t(&RaftServer::CreateSnapshot, this);
 				t.detach();
 			}
 #endif
 		}
-	}
 }
 
 void RaftServer::CreateSnapshot() {
-	//std::cout<<"Begin1\n";
+	//<<"Begin1\n";
 	size_t last_snapshot_idx = commit_idx_,
 				 last_snapshot_term = log_->Search(commit_idx_)->GetTerm();
-	// while snapshotting operations at sm are not possible
+	 //while snapshotting operations at sm are not possible
 	string snsht = sm_->CreateSnapshot(filename_);
-	//std::cout<<"Begin2\n";
+	//<<"Begin2\n";
 	mtx_.Lock();
 	size_t from = log_->GetFirst()->GetIndex();
-	//std::cout<<"Begin3\n";
+	//<<"Begin3\n";
 	log_->Delete(from, last_snapshot_idx);
-	//std::cout<<"Begin4\n";
+	//<<"Begin4\n";
 	last_snapshot_idx_ = last_snapshot_idx;
 	last_snapshot_term_ = last_snapshot_term;
 	is_snapshotting_ = false;
 	mtx_.Unlock();
-	//std::cout<<"Begin5\n";
+	//<<"Begin5\n";
 	snapshot_.Set(snsht);
 }
 
@@ -287,7 +287,7 @@ void RaftServer::SendResponse(std::string resp) {
 	sock_ = NULL;
 }
 
-// FIXME: Maybe - are not neccessary
+ //FIXME: Maybe - are not neccessary
 void RaftServer::ActWhenRequestVote() {
 	size_t another_term = rpc_->GetTransmitterTerm();
 	string resp = "";
@@ -299,7 +299,7 @@ void RaftServer::ActWhenRequestVote() {
 		cur_term_ = another_term;
 		i_voted_ = false;
 		ss << cur_term_;
-		// TODO: check that logs are as up-to-date as it is possible
+		 //TODO: check that logs are as up-to-date as it is possible
 		rq_rpc_ = (RequestVoteRPC*)rpc_;
 		ILogEntry *le = log_->GetLast();
 		size_t idx = 0, term = 0;
@@ -323,24 +323,25 @@ void RaftServer::ActWhenRequestVote() {
 
 void RaftServer::ActWhenAppendEntry() {
 	size_t another_term = rpc_->GetTransmitterTerm();
-	// reject if stale leader
-	if (another_term < cur_term_) { // >=
+	//reject if stale leader
+	if (another_term < cur_term_) {  //>=
 		return;
 	} else if (another_term > cur_term_) {
 		cur_term_ = another_term;
 		state_ = FOLLOWER;
 	}
 	leader_id_ = rpc_->GetTransmitterId();
+	//<<"New leader "<<leader_id_<<" for id="<<id_<<"\n";
 	string message;
 	std::stringstream ss;
 	string s = "!A,";
 	AppendEntryRPC *rpc = (AppendEntryRPC *)rpc_;
 	ss << cur_term_;
 
-	// Update commit_idx
+	//Update commit_idx
 	if (commit_idx_ < rpc->GetLeaderCommitIdx()) {
 		ILogEntry *le = log_->GetLast();
-		if (!le) { // empty log
+		if (!le) {  //empty log
 			commit_idx_ = rpc->GetLeaderCommitIdx();
 		} else {
 			commit_idx_ = std::min(rpc->GetLeaderCommitIdx(), le->GetIndex());
@@ -352,13 +353,13 @@ void RaftServer::ActWhenAppendEntry() {
 		if ((le = log_->Search(last_applied_ + 1))) {
 			sm_->Apply(le);
 			++last_applied_;
-			//std::cout << "Applying to sm\n";
+			// << "Applying to sm\n";
 		} else {
 			break;
 		}
 	}
-	// Leader's log is empty
-	// Previous entry is found, adding current entry
+	 //Leader's log is empty
+	 //Previous entry is found, adding current entry
 #ifdef _SNAPSHOTTING
 	mtx_.Lock();
 #endif
@@ -369,14 +370,14 @@ void RaftServer::ActWhenAppendEntry() {
 			 (rpc->GetPrevLogTerm() <= last_snapshot_term_))) {
 #else
 			(0)) {
-#endif // _SNAPSHOTTING
-		// deletes the tail of incorrect entries, only if matching entries are found
+#endif  //_SNAPSHOTTING
+		//deletes the tail of incorrect entries, only if matching entries are found
 		ILogEntry *le_last = log_->GetLast(),
 							*le_first = log_->GetFirst();
 		if (le_last) {
 			if ((rpc->GetPrevLogIdx() <= last_snapshot_idx_) &&
 					(rpc->GetPrevLogTerm() <= last_snapshot_term_)) {
-				// discard the whole log
+				//discard the whole log
 				if (le_first)
 					log_->Delete(le_first->GetIndex(), le_last->GetIndex());
 			} else if (rpc->GetPrevLogIdx()) {
@@ -390,17 +391,17 @@ void RaftServer::ActWhenAppendEntry() {
 				rpc->GetLogEntryTerm(), rpc->GetLogEntryIdx()));
 			log_->Add(cptr);
 			log_indx_ = rpc->GetLogEntryIdx() + 1;
-			//std::cout << "Added to log2\n";
-			//std::cout<<"Log indx == "<<log_indx_<<"\n";
+			// << "Added to log2\n";
+			//<<"Log indx == "<<log_indx_<<"\n";
 		}
 		s += "+,";
 	} else {
-		//std::cout<<"Going to send - from "<<id_<<", prevlog="<<rpc->GetPrevLogIdx()<<", prevterm="<< rpc->GetPrevLogTerm()<<"\n";
+		//<<"Going to send - from "<<id_<<", prevlog="<<rpc->GetPrevLogIdx()<<", prevterm="<< rpc->GetPrevLogTerm()<<"\n";
 		s += "-,";
 	}
 #ifdef _SNAPSHOTTING
 	mtx_.Unlock();
-#endif // _SNAPSHOTTING
+#endif  //_SNAPSHOTTING
 	s += ss.str();
 	ss.str("");
 	ss << id_;
@@ -418,25 +419,25 @@ void RaftServer::SendRPCToAll(Rpc type, bool is_empty) {
 					if (non_empty_le_[i])
 						continue;
 #ifdef _SNAPSHOTTING
-					// we have snapshotted already
+					 //we have snapshotted already
 					if (snapshot_.Get() != "") {
-						// не путать с пустым логом
+						 //не путать с пустым логом
 						if (!log_->Search(next_idx_[i]) && (next_idx_[i] < (last_snapshot_idx_ + 1))) {
 							mtx_.Lock();
-							// TODO: Set partitioning of the log, and send all parts
-							// while () {}
-							// XXX: Now the whole snapshot is sent at one time
+							 //TODO: Set partitioning of the log, and send all parts
+							 //while () {}
+							 //XXX: Now the whole snapshot is sent at one time
 							insn_rpc_->SetData(id_, cur_term_, last_snapshot_idx_,
 									last_snapshot_term_, 0, snapshot_.Get(), true);
 							next_idx_[i] = last_snapshot_idx_ + 1;
-							//std::cout<<"Sending InstallSnapshot\n";
+							//<<"Sending InstallSnapshot\n";
 							sfd_serv_for_serv_->Send(insn_rpc_->ToSend());
 							non_empty_le_[i] = true;
 							mtx_.Unlock();
 							continue;
 						}
 					}
-#endif // _SNAPSHOTTING
+#endif  //_SNAPSHOTTING
 					ILogEntry *le = log_->Search(prev_idx);
 					size_t prev_term;
 					prev_term = (le) ? le->GetTerm() : 0;
@@ -447,7 +448,7 @@ void RaftServer::SendRPCToAll(Rpc type, bool is_empty) {
 						prev_term = last_snapshot_term_;
 					}
 					mtx_.Unlock();
-#endif // _SNAPSHOTTING
+#endif  //_SNAPSHOTTING
 					le = log_->Search(prev_idx + 1);
 					int log_term = 0,
 							log_idx = 0;
@@ -459,7 +460,7 @@ void RaftServer::SendRPCToAll(Rpc type, bool is_empty) {
 					if (!is_empty) {
 						non_empty_le_[i] = true;
 						if (!le) {
-							//std::cout<<"Bad Error: prev_term = "<<prev_term<<", prev_idx = "<<prev_idx<<"\n";
+							//<<"Bad Error: prev_term = "<<prev_term<<", prev_idx = "<<prev_idx<<"\n";
 						}
 						entry = le->GetLogData();
 					}
@@ -470,16 +471,19 @@ void RaftServer::SendRPCToAll(Rpc type, bool is_empty) {
 			}
 		}
 		for (size_t i = 0; i < servs_as_clients_.size(); ++i) {
+			if (shutted_servers_.find(id_ - (i + 1)) != shutted_servers_.end()) {
+				continue;
+			}
 			size_t prev_idx = next_idx_[id_ - (i + 1)] - 1; // id_ == me
 			if (non_empty_le_[id_ - (i + 1)])
 				continue;
 #ifdef _SNAPSHOTTING
 			if (snapshot_.Get() != "") { // we have snapshotted already
-				// TODO: if we restore after crashing don't forget to set snapshot_
+				 //TODO: if we restore after crashing don't forget to set snapshot_
 				if (!log_->Search(next_idx_[id_ - (i + 1)]) && (next_idx_[id_ - (i + 1)] < (last_snapshot_idx_ + 1))) {
 					mtx_.Lock();
-					// TODO: Set partitioning of the log, and send all parts
-					// while () {}
+					 //TODO: Set partitioning of the log, and send all parts
+					 //while () {}
 					insn_rpc_->SetData(id_, cur_term_, last_snapshot_idx_,
 							last_snapshot_term_, 0, snapshot_.Get(), true);
 					next_idx_[id_ - (i + 1)] = last_snapshot_idx_ + 1;
@@ -489,7 +493,7 @@ void RaftServer::SendRPCToAll(Rpc type, bool is_empty) {
 					continue;
 				}
 			}
-#endif // _SNAPSHOTTING
+#endif  //_SNAPSHOTTING
 
 			ILogEntry *le = log_->Search(prev_idx);
 			size_t prev_term;
@@ -500,7 +504,7 @@ void RaftServer::SendRPCToAll(Rpc type, bool is_empty) {
 				prev_term = last_snapshot_term_;
 			}
 			mtx_.Unlock();
-#endif // _SNAPSHOTTING
+#endif  //_SNAPSHOTTING
 			le = NULL;
 			le = log_->Search(prev_idx + 1);
 			int log_term = 0,
@@ -533,9 +537,9 @@ void RaftServer::SendRPCToAll(Rpc type, bool is_empty) {
 			servs_as_clients_[i]->Send(rq_rpc_->ToSend());
 		}
 	} else {
-		// INSTALL_SNAPSHOT
+		 // INSTALL_SNAPSHOT
 #ifdef _SNAPSHOTTING
-		// XXX: nothing to do
+		 //XXX: nothing to do
 #endif
 	}
 }
@@ -555,12 +559,12 @@ void RaftServer::InitSMFromSnapshot(string snapshot) {
 }
 
 void RaftServer::ActWhenInstallSnapshot() {
-	// TODO: normally it should depend on whether
-	// or not all parts of snapshot are transmitted
-	//std::cout<<"Install snapshot received\n";
+	 //TODO: normally it should depend on whether
+	//or not all parts of snapshot are transmitted
+	//<<"Install snapshot received\n";
 	InstallSnapshotRPC *rpc = (InstallSnapshotRPC *)rpc_;
 	if (!log_->Search(rpc->GetLastInclTerm(), rpc->GetLastInclIdx())) {
-		// discard all log
+		//discard all log
 		snapshot_.Set(rpc->GetRawData());
 		ILogEntry *le_first = log_->GetFirst(),
 							*le_last = log_->GetLast();
@@ -570,7 +574,7 @@ void RaftServer::ActWhenInstallSnapshot() {
 			log_->Delete(from, to);
 		}
 	} else {
-	 // discard from beginning to last_incl_idx_
+	  //discard from beginning to last_incl_idx_
 		snapshot_.Set(rpc->GetRawData());
 		ILogEntry *le = log_->GetFirst();
 		if (le) {
@@ -579,17 +583,17 @@ void RaftServer::ActWhenInstallSnapshot() {
 			log_->Delete(from, to);
 		}
 	}
-	// reset sm from snapshot
+	//reset sm from snapshot
 	sm_->Reset();
-	// TODO: do this after restart
+	 //TODO: do this after restart
 	InitSMFromSnapshot(snapshot_.Get());
-	// XXX: Linux specific call!!!
-	// writing snapshot to file
+	 //XXX: Linux specific call!!!
+	//writing snapshot to file
 	pid_t pid = fork();
 	if (pid < 0) {
-		// well, that's a problem
+		 //well, that's a problem
 	}
-	if (pid == 0) { // child pid
+	if (pid == 0) { //child pid
 		ofstream f;
 		f.open(filename_);
 		f << snapshot_.Get();
@@ -611,8 +615,8 @@ bool RaftServer::ReceiveRPC() {
 				sock_ = sfd_serv_for_serv_;
 			}
 		} catch (exception &e) {
-			//std::cout<<"server client is dead\n";
-			// one of clients is dead, accept him
+			//<<"server client is dead\n";
+			//one of clients is dead, accept him
 		}
 	}
 	if (!mes_got) {
@@ -627,11 +631,11 @@ bool RaftServer::ReceiveRPC() {
 					break;
 				}
 			} catch (exception &e) {
-				// we need to connect again from time to time
+				//we need to connect again from time to time
 				shutted_servers_.insert(i);
 				non_empty_le_[id_ - (i + 1)] = false;
 				servs_as_clients_[i]->Reset();
-				//std::cout<<"server server is dead\n";
+				//<<"server server is dead\n";
 				continue;
 			}
 		}
@@ -655,10 +659,10 @@ bool RaftServer::ReceiveRPC() {
 				rpc_ = insn_rpc_;
 				break;
 #endif
-			case '!': // this is response from follower
-				// !R,+,term
-				// !A,+,term,id
-				// !I,term
+			case '!':  //this is response from follower
+				//!R,+,term
+				//!A,+,term,id
+				//!I,term
 				if (message[1] == 'R') {
 					term = stoi(message.substr(5));
 				} else if (message[1] == 'A') {
@@ -677,7 +681,7 @@ bool RaftServer::ReceiveRPC() {
 							voted_for_++;
 						}
 						if (voted_for_ > (cluster_size / 2)) {
-							// XXX: Here new leader is chosen
+							 //XXX: Here new leader is chosen
 							state_ = LEADER;
 							leader_id_ = id_;
 							//size_t log_length = log_->GetLength();
@@ -687,20 +691,20 @@ bool RaftServer::ReceiveRPC() {
 								match_idx_[i] = 0;
 								non_empty_le_[i] = false;
 							}
-							SendRPCToAll(APPEND_ENTRY, true); // establishing authority
-							//std::cout << "I'm a leader! " <<id_ << "\n";
+							SendRPCToAll(APPEND_ENTRY, true);//  establishing authority
+							// << "I'm a leader! " <<id_ << "\n";
 						}
 					}
 				} else if (message[1] == 'A') {
-				// AppendEntry Resp
-					receiver = stoi(message.substr(message.find_last_of(",") + 1)); // this info is redundant, id isn't neccessary
+				 //AppendEntry Resp
+					receiver = stoi(message.substr(message.find_last_of(",") + 1));//  this info is redundant, id isn't neccessary
 
 					if (message[3] == '+') {
 						ILogEntry *le = log_->GetLast();
-						if (!le) { // empty log, only heartbeats
+						if (!le) {  //empty log, only heartbeats
 							return true;
 						}
-						// if non-empty append entry was sent
+						 //if non-empty append entry was sent
 						if (non_empty_le_[receiver]) {
 							match_idx_[receiver] = next_idx_[receiver];
 							next_idx_[receiver]++;
@@ -718,8 +722,8 @@ bool RaftServer::ReceiveRPC() {
 							}
 						}
 						if (replicated > (cluster_size / 2)) {
-							commit_idx_++; // FIXME: ? or equal to log_->GetLast()->GetIndex()
-							//std::cout<<"Replicated\n";
+							commit_idx_++;  //FIXME: ? or equal to log_->GetLast()->GetIndex()
+							//<<"Replicated\n";
 							resp_ = sm_->Apply(le);
 						}
 					} else {
@@ -727,11 +731,12 @@ bool RaftServer::ReceiveRPC() {
 						SendAppendEntry(receiver);
 					}
 				} else {
-					// InstallSnapshot response
-					receiver = stoi(message.substr(message.find_last_of(",") + 1)); // this info is redundant, id isn't neccessary
+					 //InstallSnapshot response
+					receiver = stoi(message.substr(message.find_last_of(",") + 1));  //this info is redundant, id isn't neccessary
 					non_empty_le_[receiver] = false;
-					// XXX: do nothing here, only terminfo is useful(handled above)
+					 //XXX: do nothing here, only terminfo is useful(handled above)
 				}
+				break;
 		}
 		return true;
 	}
@@ -743,7 +748,7 @@ void RaftServer::SendAppendEntry(size_t receiver) {
 				 prev_term = 0,
 				 log_en_idx = 0,
 				 log_en_term = 0;
-	string str = ""; // empty mes before logs matching entries are not found
+	string str = "";  //empty mes before logs matching entries are not found
 	MyLogEntry *le = (MyLogEntry *)log_->Search(next_idx_[receiver] - 1);
 	//InstallSnapshot
 	if (le) {
@@ -751,7 +756,7 @@ void RaftServer::SendAppendEntry(size_t receiver) {
 		prev_term = le->GetTerm();
 	}
 	le = NULL;
-	//std::cout<<"next_idx_[receover] = "<<next_idx_[receiver]<<"\n";
+	//<<"next_idx_[receover] = "<<next_idx_[receiver]<<"\n";
 	le = (MyLogEntry *)log_->Search(next_idx_[receiver]);
 	if (le) {
 		log_en_idx = le->GetIndex();

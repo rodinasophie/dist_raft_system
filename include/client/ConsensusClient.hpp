@@ -12,6 +12,7 @@ class ConsensusClient {
 	virtual bool SendRequest(ILogEntry *log_entry) = 0;
 	virtual bool GetResponse(IResponse *resp) = 0;
 	virtual size_t GetLeaderId() = 0;
+	virtual bool GetNewLeader() = 0;
 };
 
 #endif // __CONSENSUS_CLIENT_HPP_

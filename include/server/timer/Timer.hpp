@@ -18,8 +18,10 @@ class Timer {
 	}
 
 	bool TimedOut() {
-		if (duration_cast<milliseconds>(high_resolution_clock::now() - start_) > timeout_)
+		if (duration_cast<milliseconds>(high_resolution_clock::now() - start_).count() > timeout_.count()) {
 			return true;
+		}
+		//std::cout<<"Not timed out: timeout_=" <<timeout_.count()<<", lasted = "<<duration_cast<milliseconds>(high_resolution_clock::now() - start_).count()<<"\n";
 		return false;
 	}
 

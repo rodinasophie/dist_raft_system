@@ -14,6 +14,7 @@ class RaftClient : public ConsensusClient {
 	bool SendRequest(ILogEntry *log_entry);
 	bool GetResponse(IResponse *resp);
 	size_t GetLeaderId();
+	bool GetNewLeader();
 
  private:
 	Socket *sock_;

@@ -52,7 +52,7 @@ SOURCE_FILES = ( \
 	(addprefix(LOCAL_SOURCE_PATH + '/' + TEST_PATH + '/', TEST_SRC)) \
 	)
 
-LOCAL_FLAGS = '-g -O3 -std=c++11 -Wnon-virtual-dtor -pthread'
+LOCAL_FLAGS = '-g -O0 -std=c++11 -Wnon-virtual-dtor -pthread'
 CCFLAGS = '-Wall -Winvalid-pch -Werror'
 LOCAL_LINKFLAGS = ["-rdynamic", "-pthread"]
 

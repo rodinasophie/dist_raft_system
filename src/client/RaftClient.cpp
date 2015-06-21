@@ -25,55 +25,56 @@ bool RaftClient::Connect() {
 		}
 		string leader = "leader",
 					 rsp;
-		//std::cout << "Connected in client\n";
+		//// << "Connected in client\n";
 		while (1) {
 			if (!sock_->Send(leader)) {
 				return false;
 			} else {
-				//std::cout<<"Sent asking leader\n";
+				//<<"Sent asking leader from "<<i<<"\n";
 			}
 			int recv_count = 0;
-			while (recv_count != MAX_CONNECT_TRIES_) {
+			while (recv_count != 200) {
 				try {
 					if (!sock_->Recv(rsp)) {
-						std::this_thread::sleep_for(std::chrono::milliseconds(100));
+						std::this_thread::sleep_for(std::chrono::milliseconds(1));
 						++recv_count;
 					} else {
-						//std::cout<<"Recved\n";
+						////<<"Recved\n";
 						break;
 					}
 				} catch (std::exception &e) {
-					//std::cout<<"Exception happened\n";
+					//<<"Exception happened\n";
+					return false;
 				}
 			}
-			if (recv_count == MAX_CONNECT_TRIES_) {
+			if (recv_count == 200) {
 				count = 0;
-				//std::cout<<"Leader doesnt answer\n";
+				//<<"Leader doesnt answer\n";
 				continue; // our serv has shutted down, connect to another server
 			}
 			int id = stoi(rsp);
 			leader_id_ = id;
-			////std::cout<<"Recved id = "<<id<<"\n";
+			//<<"Recved id = "<<id<<"\n";
 			// server doesn't know who the leader is
 			if (id < 0) {
 				++count;
-				if (count == MAX_CONNECT_TRIES_) { // leader is not chosen
+				if (count == 200) { // leader is not chosen
 					return false;
 				}
 				std::this_thread::sleep_for(std::chrono::seconds(2));
 				continue;
 			}
-			//std::cout<<"I got message "<< id<<"\n";
+			////<<"I got message "<< id<<"\n";
 			if (server->id == (size_t)id) {
 				sock_connected_ = true;
-				//std::cout << "My leader is "<<id<<"\n";
+				//// << "My leader is "<<id<<"\n";
 				return true;
 			}
 			for (size_t j = 0; j < servers_.size(); ++j) {
 				if (servers_[j]->id == (size_t)id) {
 					delete sock_;
 					sock_ = new UnixSocket();
-					//std::cout<<"Connecting to ip " <<servers_[j]->ip_addr<<",port = "
+					////<<"Connecting to ip " <<servers_[j]->ip_addr<<",port = "
 						//<<servers_[j]->port_client<<"\n";
 					if (sock_->Connect(my_ip, servers_[j]->ip_addr, servers_[j]->port_client) < 0) {
 						return false;
@@ -93,7 +94,7 @@ bool RaftClient::SendRequest(ILogEntry *log_entry) {
 	int count = 0;
 	while (1) {
 		if (sock_->Send(log_entry->ToSend())) {
-			////std::cout << "We sent request\n";
+			////// << "We sent request\n";
 			return true;
 		}
 		// if we cannot send message to server,
@@ -109,6 +110,21 @@ bool RaftClient::SendRequest(ILogEntry *log_entry) {
 			continue;
 		}
 	}
+}
+
+bool RaftClient::GetNewLeader() {
+	delete sock_;
+	sock_ = new UnixSocket();
+	size_t count = 0;
+	while (!Connect()) {
+			++count;
+			if (count == 1200) {
+				return false;
+			}
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+			continue;
+	}
+	return true;
 }
 
 size_t RaftClient::GetLeaderId() {

@@ -49,11 +49,12 @@ class TimeTest : public RaftTest {
 	}
  private:
 	void RunLeaderElectionTest(const char *filename) {
-		for (size_t i = 0; i < 60; ++i) {
+		for (size_t i = 0; i < 1000; ++i) {
 			RunServerCluster(filename);
-			sleep(2);
+			sleep(5);
+			std::thread t(&TimeTest::RunKillerClient, this, filename);
+			t.join();
 			KillAll();
-			sleep(2);
 		}
 	}
 
@@ -81,7 +82,7 @@ class TimeTest : public RaftTest {
 
 	void KillAll() {
 		for (auto it = servers_.begin(); it != servers_.end(); ++it) {
-			kill(it->first, SIGINT);
+			kill(it->second, SIGINT);
 		}
 	}
 
@@ -117,10 +118,6 @@ class TimeTest : public RaftTest {
 
 	void KillLeader() {
 		int server_to_kill = leader_id_;
-		while (servers_.find(server_to_kill) == servers_.end()) {
-			server_to_kill = leader_id_;
-			sleep(1);
-		}
 		kill(servers_[server_to_kill], SIGINT);
 		servers_.erase(servers_.find(server_to_kill));
 	}
@@ -134,7 +131,7 @@ class TimeTest : public RaftTest {
 		for (size_t i = 0; i < servers.size(); ++i) {
 			if (getpid() == parent) {
 				// parent process
-				std::cout<<"Fork at"<<getpid()<<"\n";
+				std::cout<<"Fork at "<<parent<<"\n";
 				pid = fork();
 				sleep(1);
 				if (pid > 0) {
@@ -151,6 +148,54 @@ class TimeTest : public RaftTest {
 				}
 			}
 		}
+	}
+
+	void RunKillerClient(const char *filename) {
+		vector<server_t *> servers_arr;
+		json servers = json::parse_file(filename);
+
+		for (size_t i = 0; i < servers.size(); ++i) {
+			try {
+				json& server = servers[i];
+				servers_arr.push_back(new server_t);
+				servers_arr[i]->id  = server["id"].as<size_t>();
+				servers_arr[i]->ip_addr = server["ip-addr"].as<std::string>();
+				servers_arr[i]->port_serv  = server["port_serv"].as<std::string>();
+				servers_arr[i]->port_client = server["port_client"].as<std::string>();
+			} catch (const std::exception& e) {
+				std::cerr << e.what() << std::endl;
+			}
+		}
+		ConsensusClient *client = new RaftClient(servers_arr);
+		if (!client->Connect()) {
+			std::cout<<"returning\n";
+			return;
+		}
+		ILogEntry *log_entry = new MyLogEntry(ADD, "x", "5");
+		client->SendRequest(log_entry);
+		MyResponse resp;
+		while (!client->GetResponse(&resp)) {}
+		string str = resp.GetData();
+		delete log_entry;
+		leader_id_ = client->GetLeaderId();
+		struct timeval start, end;
+		const char *filename1 = "/home/sonya/dist_raft_system/time";
+		ofstream f;
+		f.open(filename1, std::ofstream::app);
+		KillLeader();
+		usleep(1000);
+		gettimeofday(&start, NULL);
+		if (!client->GetNewLeader()) {
+			f.close();
+			delete client;
+			return;
+		}
+		gettimeofday(&end, NULL);
+		std::cout<<"Hello+\n";
+		f<<((end.tv_sec - start.tv_sec)*1000000 + (end.tv_usec - start.tv_usec));
+		f<<"\n";
+		f.close();
+		delete client;
 	}
 
 	void RunClient(const char *filename) {

@@ -122,8 +122,10 @@ bool UnixSocket::Bind(string ip, int server_port) {
   addr.sin_port        = htons(server_port);
 	addr.sin_addr.s_addr = inet_addr(ip.c_str());
 	// addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	int yes = 1;
+	setsockopt(sfd_, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
   if (bind(sfd_, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
-		//perror("");
+		perror("");
 		return false;
   }
 	state_ = SERVER;
@@ -200,7 +202,8 @@ bool UnixSocket::GetReadyClient() { // sets client_sfd_
 
 	int res = select(max_fd + 1, &fds, NULL, NULL, &timeout);
 	if (res <= 0) {
-    return false;
+		//std::cout<<"no ready servers\n";
+		return false;
   }
 
   for (size_t i = 0; i < clients_.size(); ++i) {
@@ -237,7 +240,7 @@ size_t UnixSocket::Recv(string &data) {
 	// if shutdown signal is received
 	if (!strlen(data.c_str())) {
 		clients_.erase(std::remove(clients_.begin(), clients_.end(),
-					client_sfd_), clients_.end());
+					sfd), clients_.end());
 		data = "";
 		std::exception e;
 		throw e;
