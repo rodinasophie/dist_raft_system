@@ -23,14 +23,10 @@ bool RaftClient::Connect() {
 		if (sock_->Connect(my_ip, server->ip_addr, server->port_client) < 0) {
 			continue;
 		}
-		string leader = "leader",
-					 rsp;
-		//// << "Connected in client\n";
+		string leader = "leader", rsp;
 		while (1) {
 			if (!sock_->Send(leader)) {
 				return false;
-			} else {
-				//<<"Sent asking leader from "<<i<<"\n";
 			}
 			int recv_count = 0;
 			while (recv_count != 200) {
@@ -39,23 +35,18 @@ bool RaftClient::Connect() {
 						std::this_thread::sleep_for(std::chrono::milliseconds(1));
 						++recv_count;
 					} else {
-						////<<"Recved\n";
 						break;
 					}
 				} catch (std::exception &e) {
-					//<<"Exception happened\n";
 					return false;
 				}
 			}
 			if (recv_count == 200) {
 				count = 0;
-				//<<"Leader doesnt answer\n";
 				continue; // our serv has shutted down, connect to another server
 			}
 			int id = stoi(rsp);
 			leader_id_ = id;
-			//<<"Recved id = "<<id<<"\n";
-			// server doesn't know who the leader is
 			if (id < 0) {
 				++count;
 				if (count == 200) { // leader is not chosen
@@ -64,18 +55,14 @@ bool RaftClient::Connect() {
 				std::this_thread::sleep_for(std::chrono::seconds(2));
 				continue;
 			}
-			////<<"I got message "<< id<<"\n";
 			if (server->id == (size_t)id) {
 				sock_connected_ = true;
-				//// << "My leader is "<<id<<"\n";
 				return true;
 			}
 			for (size_t j = 0; j < servers_.size(); ++j) {
 				if (servers_[j]->id == (size_t)id) {
 					delete sock_;
 					sock_ = new UnixSocket();
-					////<<"Connecting to ip " <<servers_[j]->ip_addr<<",port = "
-						//<<servers_[j]->port_client<<"\n";
 					if (sock_->Connect(my_ip, servers_[j]->ip_addr, servers_[j]->port_client) < 0) {
 						return false;
 					}
@@ -94,7 +81,6 @@ bool RaftClient::SendRequest(ILogEntry *log_entry) {
 	int count = 0;
 	while (1) {
 		if (sock_->Send(log_entry->ToSend())) {
-			////// << "We sent request\n";
 			return true;
 		}
 		// if we cannot send message to server,
@@ -117,12 +103,12 @@ bool RaftClient::GetNewLeader() {
 	sock_ = new UnixSocket();
 	size_t count = 0;
 	while (!Connect()) {
-			++count;
-			if (count == 1200) {
-				return false;
-			}
-			std::this_thread::sleep_for(std::chrono::milliseconds(1));
-			continue;
+	    ++count;
+		if (count == 1200) {
+			return false;
+		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		continue;
 	}
 	return true;
 }

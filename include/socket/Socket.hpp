@@ -10,7 +10,7 @@ class Socket {
 	virtual ~Socket() {};
 	virtual void Reset() = 0;
 	virtual int Connect(string &my_name, string &server_name,
-			string &server_port) = 0;
+	    string &server_port) = 0;
 
 	virtual bool Bind(string ip, int server_port) = 0;
 	virtual int AcceptIncomings(string &client_ip_addr) = 0;

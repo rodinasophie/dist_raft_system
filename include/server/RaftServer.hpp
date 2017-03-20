@@ -37,21 +37,21 @@ class RaftServer : public ConsensusServer {
 		LEADER,
 	} state_;
 	vector<server_t *> servers_;
-	Socket *sfd_serv_for_serv_,        // as server for other servers
-				 *sfd_serv_for_client_;      // as server for clients(./client)
+	Socket *sfd_serv_for_serv_,         // as server for other servers
+	       *sfd_serv_for_client_;       // as server for clients(./client)
 	vector<Socket *> servs_as_clients_; // as client for other servers
 
 	Socket *sock_;
 
 	size_t commit_idx_,
-				 last_applied_,
-				 id_,
-				 leader_id_,
-				 voted_for_,
-				 log_indx_,
-				 elect_timeout_,
-				 last_snapshot_idx_,
-				 last_snapshot_term_;
+	    last_applied_,
+		id_,
+		leader_id_,
+		voted_for_,
+		log_indx_,
+		elect_timeout_,
+		last_snapshot_idx_,
+		last_snapshot_term_;
 	std::string resp_, filename_;
 	bool i_voted_;
 	std::atomic<bool> is_snapshotting_;
@@ -88,10 +88,6 @@ class RaftServer : public ConsensusServer {
 	void InitSMFromSnapshot(string snapshot);
 	void CreateSnapshot();
 };
-
-// RPC protocol:
-// 1. current_term, leader|candidate id
-//
 
 class RPC {
  public:
@@ -183,10 +179,6 @@ class AppendEntryRPC : public RPC {
 		pos = mes.find(",", pos + 1);
 		log_en_idx_ = stoi(mes.substr(first, pos - first));
 		log_record_ = mes.substr(pos + 1);
-		if (log_record_ != "") {
-			////std::cout << "Setting data in ApEntry log_record = "
-				//<<log_record_<<", all mes = "<<mes<<"\n";
-		}
 	}
 
 	string ToSend() {
@@ -224,10 +216,10 @@ class AppendEntryRPC : public RPC {
  private:
 	std::string log_record_;
 	size_t prev_log_idx_,
-				 prev_log_term_,
-				 log_en_term_,
-				 log_en_idx_,
-				 commit_idx_;
+	    prev_log_term_,
+		log_en_term_,
+		log_en_idx_,
+		commit_idx_;
 };
 
 class RequestVoteRPC : public RPC {
@@ -236,7 +228,7 @@ class RequestVoteRPC : public RPC {
 	RequestVoteRPC() {}
 	~RequestVoteRPC() {}
 	void SetData(size_t id, size_t cur_term, size_t last_log_idx,
-			size_t last_log_term) {
+		size_t last_log_term) {
 		RPC::SetData(id, cur_term);
 		std::stringstream ss;
 		last_log_idx_ = last_log_idx;
@@ -250,7 +242,6 @@ class RequestVoteRPC : public RPC {
 	void SetData(string mes) {
 		// R,id,term,last_log_idx,last_log_term
 		size_t pos = mes.find(",");
-		//std::cout << "Sending " <<mes<<"\n";
 		pos = mes.find(",", pos + 1);
 		id_ = stoi(mes.substr(2, pos - 2));
 		size_t fir = pos + 1;
@@ -322,7 +313,6 @@ class InstallSnapshotRPC : public RPC {
 	void SetData(string mes) {
 		// I,id,cur_term,last_incl_idx,last_incl_term,offset,raw_data,done
 		size_t pos = mes.find(",");
-		////std::cout << "Sending " <<mes<<"\n";
 		pos = mes.find(",", pos + 1);
 		id_ = stoi(mes.substr(2, pos - 2));
 		size_t fir = pos + 1;
@@ -373,9 +363,8 @@ class InstallSnapshotRPC : public RPC {
 		return raw_data_;
 	}
  private:
-	size_t last_incl_idx_,
-				 last_incl_term_,
-				 offset_;
+	size_t last_incl_idx_, last_incl_term_,
+		offset_;
 	bool done_;
 	string raw_data_;
 };

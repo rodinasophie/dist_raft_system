@@ -117,17 +117,17 @@ bool UnixSocket::Bind(string ip, int server_port) {
 		return false;
 
 	struct sockaddr_in addr;
-  memset(&addr, 0, sizeof(addr));
-  addr.sin_family      = AF_INET;
-  addr.sin_port        = htons(server_port);
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family      = AF_INET;
+	addr.sin_port        = htons(server_port);
 	addr.sin_addr.s_addr = inet_addr(ip.c_str());
 	// addr.sin_addr.s_addr = htonl(INADDR_ANY);
 	int yes = 1;
 	setsockopt(sfd_, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
-  if (bind(sfd_, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+	if (bind(sfd_, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
 		perror("");
 		return false;
-  }
+	}
 	state_ = SERVER;
 	if (listen(sfd_, 100) == -1) {
 		//perror("");
@@ -152,7 +152,9 @@ int UnixSocket::AcceptIncomings(string &client_ip_addr) {
 	clients_.push_back(client_sfd);
 	return client_sfd;
 }
+
 size_t UnixSocket::latency;
+
 size_t UnixSocket::Send(string data) {
   if (state_ == NOT_INITED) {
 		// TODO: Set logging
@@ -162,13 +164,12 @@ size_t UnixSocket::Send(string data) {
 	const char *to_send = data.c_str();
 	size_t remaining_bytes = size + 1;
 
-  ssize_t ret;
+	ssize_t ret;
 	int sfd = (state_ == CLIENT) ? sfd_ : client_sfd_;
 
 	if (sfd < 0) /* No client to send to */
 		return 0;
 	errno = 0;
-	//usleep(UnixSocket::latency);
 	while ((remaining_bytes > 0) &&
 			   ((ret = send(sfd, to_send, remaining_bytes, MSG_NOSIGNAL)) > 0)) {
 		remaining_bytes -= ret;
@@ -190,23 +191,22 @@ bool UnixSocket::GetReadyClient() { // sets client_sfd_
 	}
 
 	struct timeval timeout;
-  fd_set fds;
-  FD_ZERO(&fds);
+	fd_set fds;
+	FD_ZERO(&fds);
 	int max_fd = 0;
 	for (size_t i = 0; i < clients_.size(); ++i) {
 		FD_SET(clients_[i], &fds);
 		max_fd = MAX(max_fd, clients_[i]);
-  }
-  timeout.tv_sec = 0;
-  timeout.tv_usec = 20;
+    }
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 20;
 
 	int res = select(max_fd + 1, &fds, NULL, NULL, &timeout);
 	if (res <= 0) {
-		//std::cout<<"no ready servers\n";
 		return false;
-  }
+    }
 
-  for (size_t i = 0; i < clients_.size(); ++i) {
+    for (size_t i = 0; i < clients_.size(); ++i) {
 		if (FD_ISSET(clients_[i], &fds)) {
 			ready_fds_.push_back(clients_[i]);
 			break;
@@ -228,15 +228,15 @@ size_t UnixSocket::Recv(string &data) {
 		}
 	int sfd = (state_ == CLIENT) ? sfd_ : client_sfd_;
 	char buffer;
-  ssize_t ret;
+    ssize_t ret;
 	while ((ret = recv(sfd, &buffer, 1, MSG_DONTWAIT)) >= 0) {
 		data += buffer;
 		if (buffer == '\0')
 			break;
 	}
-  if (ret == -1) {
+    if (ret == -1) {
 		return 0;
-  }
+    }
 	// if shutdown signal is received
 	if (!strlen(data.c_str())) {
 		clients_.erase(std::remove(clients_.begin(), clients_.end(),

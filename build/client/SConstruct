@@ -47,8 +47,8 @@ CCFLAGS = '-Wall -Winvalid-pch -Werror '
 LOCAL_LINKFLAGS = ["-rdynamic", "-pthread"]
 
 env = Environment(CPPFLAGS = LOCAL_FLAGS,
-									CPPPATH = LOCAL_INCLUDES,
-									CCFLAGS=CCFLAGS,
-									LINKFLAGS = LOCAL_LINKFLAGS)
+    CPPPATH = LOCAL_INCLUDES,
+	CCFLAGS=CCFLAGS,
+	LINKFLAGS = LOCAL_LINKFLAGS)
 VariantDir("../../out/", '.', duplicate = 0)
 env.Program(target = "../../out/client", source = SOURCE_FILES)

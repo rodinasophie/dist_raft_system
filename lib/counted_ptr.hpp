@@ -5,8 +5,7 @@ template <class X>
 class counted_ptr {
  public:
 	typedef X element_type;
-	explicit counted_ptr(X* p = 0) // allocate a new counter
-		: itsCounter(0) {if (p) itsCounter = new counter(p);}
+	explicit counted_ptr(X* p = 0) : itsCounter(0) {if (p) itsCounter = new counter(p);}
 	~counted_ptr() {
 		release();
 	}
@@ -35,9 +34,9 @@ class counted_ptr {
   }* itsCounter;
 
   void acquire(counter* c) throw() { // increment the count
-	  itsCounter = c;
+    itsCounter = c;
     if (c)
-			++c->count;
+        ++c->count;
   }
 
   void release() { // decrement the count, delete if it is 0
@@ -46,8 +45,8 @@ class counted_ptr {
         delete itsCounter->ptr;
         delete itsCounter;
       }
-			itsCounter = 0;
-   }
-	}
+      itsCounter = 0;
+    }
+  }
 };
 #endif // __COUNTED_PTR_HPP_

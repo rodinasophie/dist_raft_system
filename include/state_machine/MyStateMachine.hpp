@@ -31,17 +31,11 @@ class MyStateMachine : public IStateMachine {
 	}
 
 	string CreateSnapshot(std::string filename) {
-	//std::cout<<"Begin2*\n";
 		mtx_.Lock();
-	//std::cout<<"Begin2*\n";
 		string contents = storage_->GetContents();
-	//std::cout<<"Begin2*\n";
 		ofstream f;
 		contents = "S:"+contents;
-		//std::cout<<"Contents: "<<contents<<"\n";
-	//std::cout<<"Begin2*\n";
 		f.open(filename);
-	//std::cout<<"Begin2*\n";
 		f << contents;
 		f.close();
 		mtx_.Unlock();

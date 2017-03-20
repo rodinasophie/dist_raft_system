@@ -60,10 +60,10 @@ cppdefines = []
 #cppdefines.append('_SNAPSHOTTING')
 
 env = Environment(CXX='clang++',
-									CPPFLAGS = LOCAL_FLAGS,
-									CPPPATH = LOCAL_INCLUDES,
-									CCFLAGS=CCFLAGS,
-									LINKFLAGS = LOCAL_LINKFLAGS,
-									CPPDEFINES = cppdefines)
+    CPPFLAGS = LOCAL_FLAGS,
+	CPPPATH = LOCAL_INCLUDES,
+	CCFLAGS=CCFLAGS,
+	LINKFLAGS = LOCAL_LINKFLAGS,
+	CPPDEFINES = cppdefines)
 VariantDir("../../out", '.', duplicate = 0)
 env.Program(target = "../../out/test", source = SOURCE_FILES)

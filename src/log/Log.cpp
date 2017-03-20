@@ -6,9 +6,6 @@ size_t Log::idx_to_find_ = 0;
 void Log::Add(counted_ptr<ILogEntry> &ptr) {
 	m_.Lock();
 	log_entries_.push_back(ptr);
-	//std::cout<<"Adding idx = "<<ptr.get()->GetIndex()<<
-		//", term = "<<ptr.get()->GetTerm()<<"\n";
-	//std::cout<<"LOG:Added to log, size == "<<log_entries_.size()<<"\n";
 	m_.Unlock();
 }
 
@@ -114,7 +111,6 @@ ILogEntry *Log::Search(size_t idx) {
 void Log::Delete(size_t from, size_t to) {
 	if (from > to)
 		return;
-	////std::cout<<"Trying to delete from "<<from<<" to "<<to<<"\n";
 	m_.Lock();
 	Log::idx_to_find_ = from;
 	auto it_from = std::find_if(log_entries_.begin(), log_entries_.end(), IsInLog);
