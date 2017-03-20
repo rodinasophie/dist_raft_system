@@ -3,9 +3,9 @@
 
 class ConsensusServer {
  public:
-	ConsensusServer() {};
-	virtual ~ConsensusServer() {};
-	virtual void Run() = 0;
+    ConsensusServer() {};
+    virtual ~ConsensusServer() {};
+    virtual void Run() = 0;
 };
 
 #endif // __CONSENSUS_SERVER_HPP_

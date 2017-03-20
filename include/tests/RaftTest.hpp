@@ -3,8 +3,8 @@
 
 class RaftTest {
  public:
-	RaftTest() {};
-	virtual ~RaftTest() {};
+    RaftTest() {};
+    virtual ~RaftTest() {};
 };
 
 #endif // _RAFT_TEST_HPP_

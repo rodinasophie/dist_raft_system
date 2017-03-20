@@ -15,42 +15,42 @@ CLIENT_INCLUDES = LOCAL_INCLUDES_PATH + '/' + "client"
 SOCKET_INCLUDES = LOCAL_INCLUDES_PATH + '/' + "socket"
 
 def addprefix(prefix, items):
-	result = []
-	for item in items:
-		result += [prefix + item]
-	return result
+    result = []
+    for item in items:
+        result += [prefix + item]
+    return result
 
 TEST_PATH = "tests"
 JSON_PATH = "json/src"
 
 SYSTEM_SRC = Split("""
-	RaftClient.cpp
-	""")
+    RaftClient.cpp
+    """)
 
 TEST_SRC = Split("""
-	test.cpp
-	""")
+    test.cpp
+    """)
 
 SOCKET_PATH = LOCAL_SOURCE_PATH + '/' + "socket"
 SOCKET_SRC = Split("""
-	UnixSocket.cpp
-	""")
+    UnixSocket.cpp
+    """)
 
 LOCAL_INCLUDES = ( \
-	[LOCAL_PATH] + \
-	[SERVER_INCLUDES] + \
-	[LOCAL_INCLUDES_PATH] + \
-	[CLIENT_INCLUDES] + \
-	[SOCKET_INCLUDES] + \
-	[LOCAL_INCLUDES_PATH + '/' + TEST_PATH] + \
-	[LOCAL_LIB_PATH + '/' + JSON_PATH] \
-	)
+    [LOCAL_PATH] + \
+    [SERVER_INCLUDES] + \
+    [LOCAL_INCLUDES_PATH] + \
+    [CLIENT_INCLUDES] + \
+    [SOCKET_INCLUDES] + \
+    [LOCAL_INCLUDES_PATH + '/' + TEST_PATH] + \
+    [LOCAL_LIB_PATH + '/' + JSON_PATH] \
+    )
 
 SOURCE_FILES = ( \
-	(addprefix(CLIENT_PATH + '/', SYSTEM_SRC)) + \
-	(addprefix(SOCKET_PATH + '/', SOCKET_SRC)) + \
-	(addprefix(LOCAL_SOURCE_PATH + '/' + TEST_PATH + '/', TEST_SRC)) \
-	)
+    (addprefix(CLIENT_PATH + '/', SYSTEM_SRC)) + \
+    (addprefix(SOCKET_PATH + '/', SOCKET_SRC)) + \
+    (addprefix(LOCAL_SOURCE_PATH + '/' + TEST_PATH + '/', TEST_SRC)) \
+    )
 
 LOCAL_FLAGS = '-g -O0 -std=c++11 -Wnon-virtual-dtor -pthread'
 CCFLAGS = '-Wall -Winvalid-pch -Werror'
@@ -61,9 +61,9 @@ cppdefines = []
 
 env = Environment(CXX='clang++',
     CPPFLAGS = LOCAL_FLAGS,
-	CPPPATH = LOCAL_INCLUDES,
-	CCFLAGS=CCFLAGS,
-	LINKFLAGS = LOCAL_LINKFLAGS,
-	CPPDEFINES = cppdefines)
+    CPPPATH = LOCAL_INCLUDES,
+    CCFLAGS=CCFLAGS,
+    LINKFLAGS = LOCAL_LINKFLAGS,
+    CPPDEFINES = cppdefines)
 VariantDir("../../out", '.', duplicate = 0)
 env.Program(target = "../../out/test", source = SOURCE_FILES)

@@ -5,19 +5,19 @@
 
 class Mutex {
  public:
-	Mutex() {};
-	~Mutex() {
-		m_.unlock();
-	};
-	void Lock() {
-		while (!m_.try_lock()) {}
-	}
+    Mutex() {};
+    ~Mutex() {
+        m_.unlock();
+    };
+    void Lock() {
+        while (!m_.try_lock()) {}
+    }
 
-	void Unlock() {
-		m_.unlock();
-	}
+    void Unlock() {
+        m_.unlock();
+    }
  private:
-	std::mutex m_;
+    std::mutex m_;
 };
 
 #endif // __MUTEX_HPP_

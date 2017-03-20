@@ -18,11 +18,11 @@ using namespace std;
 using jsoncons::json;
 
 typedef struct server {
-	size_t id;
-	size_t sfd;
-	string ip_addr;
-	string port_serv;
-	string port_client;
+    size_t id;
+    size_t sfd;
+    string ip_addr;
+    string port_serv;
+    string port_client;
 } server_t;
 
 #endif // __LIB_HPP_

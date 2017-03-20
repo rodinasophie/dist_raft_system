@@ -6,23 +6,23 @@
 
 class ThreadSafeString {
  public:
-	 ThreadSafeString() {};
-	 ~ThreadSafeString() {};
-	const std::string Get() {
-		m_.Lock();
-		string str = data_;
-		m_.Unlock();
-		return str;
-	}
+     ThreadSafeString() {};
+     ~ThreadSafeString() {};
+    const std::string Get() {
+        m_.Lock();
+        string str = data_;
+        m_.Unlock();
+        return str;
+    }
 
-	void Set(std::string str) {
-		m_.Lock();
-		data_ = str;
-		m_.Unlock();
-	}
+    void Set(std::string str) {
+        m_.Lock();
+        data_ = str;
+        m_.Unlock();
+    }
 
  private:
-	Mutex m_;
-	std::string data_;
+    Mutex m_;
+    std::string data_;
 };
 #endif // __THREAD_SAFE_STRING_HPP_

@@ -9,43 +9,43 @@
 
 class MyStorage : public IStorage {
  public:
-	MyStorage() {};
-	~MyStorage() {};
-	string Add(IKey *key, IValue *value) {
-		storage_[key->ToString()] = value->ToString();
-		return "+";
-	}
+    MyStorage() {};
+    ~MyStorage() {};
+    string Add(IKey *key, IValue *value) {
+        storage_[key->ToString()] = value->ToString();
+        return "+";
+    }
 
-	string Delete(IKey *key) {
-		if (storage_.erase(key->ToString())) {
-			return "+";
-		}
-		return "-";
-	}
+    string Delete(IKey *key) {
+        if (storage_.erase(key->ToString())) {
+            return "+";
+        }
+        return "-";
+    }
 
-	void Reset() {
-		storage_.clear();
-	}
+    void Reset() {
+        storage_.clear();
+    }
 
-	string Get(IKey *key) {
-		try {
-			string str = storage_.at(key->ToString());
-			return str;
-		} catch (std::out_of_range &e) {
-			return "-";
-		}
-	}
+    string Get(IKey *key) {
+        try {
+            string str = storage_.at(key->ToString());
+            return str;
+        } catch (std::out_of_range &e) {
+            return "-";
+        }
+    }
 
-	std::string GetContents() {
-		std::string res = "";
-		for (auto it = storage_.begin(); it != storage_.end();
-				++it) {
-			res += it->first + ":" + it->second + "|";
-		}
-		return res;
-	}
+    std::string GetContents() {
+        std::string res = "";
+        for (auto it = storage_.begin(); it != storage_.end();
+                ++it) {
+            res += it->first + ":" + it->second + "|";
+        }
+        return res;
+    }
  private:
-	std::map<string, string> storage_;
+    std::map<string, string> storage_;
 };
 
 #endif // __MY_STORAGE_HPP_

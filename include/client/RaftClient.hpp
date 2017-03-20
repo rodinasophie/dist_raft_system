@@ -7,21 +7,21 @@
 
 class RaftClient : public ConsensusClient {
  public:
-	RaftClient(vector<server_t *> &servers_arr);
-	~RaftClient();
+    RaftClient(vector<server_t *> &servers_arr);
+    ~RaftClient();
 
-	bool Connect();
-	bool SendRequest(ILogEntry *log_entry);
-	bool GetResponse(IResponse *resp);
-	size_t GetLeaderId();
-	bool GetNewLeader();
+    bool Connect();
+    bool SendRequest(ILogEntry *log_entry);
+    bool GetResponse(IResponse *resp);
+    size_t GetLeaderId();
+    bool GetNewLeader();
 
  private:
-	Socket *sock_;
-	size_t leader_id_;
-	bool sock_connected_;
-	vector<server_t *> servers_;
-	const int MAX_CONNECT_TRIES_ = 20;
+    Socket *sock_;
+    size_t leader_id_;
+    bool sock_connected_;
+    vector<server_t *> servers_;
+    const int MAX_CONNECT_TRIES_ = 20;
 };
 
 #endif // __RAFT_CLIENT_HPP_

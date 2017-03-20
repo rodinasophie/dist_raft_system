@@ -8,32 +8,32 @@ class IStorage;
 
 class IKey {
  public:
-	IKey() {};
-	virtual ~IKey() {};
-	virtual string &ToString() = 0;
+    IKey() {};
+    virtual ~IKey() {};
+    virtual string &ToString() = 0;
 };
 
 class IValue {
  public:
-	IValue() {};
-	virtual ~IValue() {};
-	virtual string &ToString() = 0;
+    IValue() {};
+    virtual ~IValue() {};
+    virtual string &ToString() = 0;
 };
 
 class IAction {
  public:
-	IAction() {};
-	virtual ~IAction() {};
-	virtual string Act(IStorage *storage) = 0;
+    IAction() {};
+    virtual ~IAction() {};
+    virtual string Act(IStorage *storage) = 0;
 };
 
 class IStorage {
  public:
-	IStorage() {};
-	virtual ~IStorage() {};
-	virtual string Add(IKey *key, IValue * value) = 0;
-	virtual string Delete(IKey *key) = 0;
-	virtual string Get(IKey *key) = 0;
+    IStorage() {};
+    virtual ~IStorage() {};
+    virtual string Add(IKey *key, IValue * value) = 0;
+    virtual string Delete(IKey *key) = 0;
+    virtual string Get(IKey *key) = 0;
 };
 
 
